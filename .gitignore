@@ -1,0 +1,48 @@
+
+## `.gitignore` Configuration
+
+Save the following block as `.gitignore` in the root directory of the project:
+
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.env
+.env.local
+.env.staging
+.env.production
+.coverage
+htmlcov/
+.pytest_cache/
+dist/
+*.egg-info/
+
+# Cryptographic Keys (NEVER commit RSA keys)
+backend/private.pem
+backend/public.pem
+
+# Node / NuxtJS
+node_modules/
+.nuxt/
+.output/
+.data/
+dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.staging
+frontend/.env.production
+
+# Docker volumes
+data/postgres/
+data/redis/
+
+# OS / IDE Specific
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/settings.json
+*.swp
+
