@@ -1,0 +1,66 @@
+/* Base reset + design tokens */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+:root {
+    --color-primary: #1D9E75;
+    --color-secondary: #378ADD;
+    --color-danger: #D32F2F;
+    --color-warning: #F57C00;
+    --font-sans: 'Inter', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+}
+
+body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Money display — always right-aligned */
+.money {
+    font-family: var(--font-mono);
+    text-align: right;
+}
+
+.money-pos {
+    color: var(--color-primary);
+}
+
+.money-neg {
+    color: var(--color-danger);
+}
+
+/* Dashboard layout */
+.dashboard-layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: 100vh;
+}
+
+.sidebar {
+    background: #f8f9fa;
+    border-right: 1px solid #e9ecef;
+}
+
+.main {
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+/* Shop layout — mobile first */
+.shop-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+@media (max-width: 640px) {
+    .shop-grid {
+        grid-template-columns: 1fr;
+    }
+}

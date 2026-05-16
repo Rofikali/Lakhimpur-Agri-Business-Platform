@@ -5,7 +5,7 @@ Save the following block as `.gitignore` in the root directory of the project:
 
 
 # Python
-__pycache__/
+*__pycache__/
 *.pyc
 *.pyo
 .venv/
@@ -34,7 +34,18 @@ frontend/.env
 frontend/.env.local
 frontend/.env.staging
 frontend/.env.production
-
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.pyc
+__pycache__/
+.env
+.env.local
 # Docker volumes
 data/postgres/
 data/redis/
@@ -45,4 +56,9 @@ Thumbs.db
 .idea/
 .vscode/settings.json
 *.swp
+
+backend/private.pem
+backend/public.pem
+backend/.env.local
+frontend/.env.local
 
