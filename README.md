@@ -1,3 +1,112 @@
+# Lakhimpur Agri-Business Platform
+
+Farm-direct rice and traditional Assamese petha — sold online and offline
+from Lakhimpur district, Assam. Built by a solo engineer.
+
+## What it does
+
+- **Shop** (`/shop`) — customers browse Joha Rice, Bora Saul, Kali Jeera,
+  Narikal Petha and Septa Petha, pay via UPI/Razorpay, choose pickup or delivery
+- **Dashboard** (`/dashboard`) — owner manages inventory, orders, P&L,
+  farm seasons, petha batches, and sees real-time profit to ₹0.00001
+
+## Tech stack
+
+| Layer        | Technology                        |
+|---|---|
+| Backend      | FastAPI (Python 3.11), async      |
+| Frontend     | NuxtJS 3 (Vue 3 + TypeScript)     |
+| Database     | PostgreSQL 15 — NUMERIC(15,5)     |
+| Cache        | Redis 7                           |
+| Payments     | Razorpay (UPI + cards)            |
+| Notify       | WATI (WhatsApp Business API)      |
+| Deploy       | Railway (backend) + Vercel (frontend) |
+| Monitoring   | Sentry + OpenTelemetry            |
+
+## Prerequisites
+
+- Docker + Docker Compose
+- make
+- openssl (for RSA key generation)
+
+## First-time setup
+
+```bash
+# 1. Clone
+git clone https://github.com/yourusername/lakhimpur-biz.git
+cd lakhimpur-biz
+
+# 2. Generate JWT RSA keys (do once, keep private.pem secret)
+openssl genrsa -out backend/private.pem 2048
+openssl rsa -in backend/private.pem -pubout -out backend/public.pem
+
+# 3. Copy env files and fill in values
+cp backend/.env.example  backend/.env.local
+cp frontend/.env.example frontend/.env.local
+# Edit backend/.env.local — add JWT_PRIVATE_KEY, JWT_PUBLIC_KEY,
+#   RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET (TEST keys)
+
+# 4. Start everything
+make up      # starts backend, frontend, postgres, redis
+make migrate # runs Alembic migrations
+make seed    # creates owner account + 5 default products
+```
+
+Open <http://localhost:3000/login> — username: `admin`, password: `changeme123`
+
+## Daily workflow
+
+```bash
+make up          # start services
+make logs        # watch backend logs
+make test-unit   # fast unit tests (no DB)
+make test-cov    # full tests + coverage
+make lint        # ruff + black check
+make format      # auto-fix formatting
+make migrate     # run new migrations
+make generate-migration MSG="describe change"
+make down        # stop (data persists)
+```
+
+## Project structure
+
+```
+lakhimpur-biz/
+├── backend/          FastAPI app
+│   ├── core/         config, db, redis, security, middleware
+│   ├── modules/      auth, products, inventory, orders, payments,
+│   │                 pl_engine, farm, petha, notify
+│   ├── shared/       base models, exceptions, utils
+│   ├── migrations/   Alembic
+│   └── scripts/      seed.py
+├── frontend/         NuxtJS app
+│   ├── pages/        dashboard/ + shop/
+│   ├── components/   dashboard/ + shop/ + shared/
+│   ├── composables/
+│   └── stores/       Pinia
+├── docker-compose.yml
+└── Makefile
+```
+
+## API documentation
+
+Running locally: <http://localhost:8000/docs> (disabled in production)
+
+## Deployment
+
+Push to `main` → GitHub Actions:
+
+1. Runs all tests (backend + frontend)
+2. Deploys backend to Railway
+3. Deploys frontend to Vercel
+
+Set secrets in GitHub repo settings — see Stage 5 documentation.
+
+## Environment variables
+
+See `backend/.env.example` and `frontend/.env.example` for all required variables.
+Production secrets live in Railway and Vercel dashboards — never in git.
+
 ### Root Project Layout
 
     lakhimpur-biz/               # Root repository directory
@@ -41,8 +150,8 @@ openssl rsa -in backend/private.pem -pubout -out backend/public.pem
 awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;} END {printf "\n"}' backend/private.pem
 ```
 
-* **Action Required:** Copy the output of the `awk` command into `JWT_PRIVATE_KEY` inside `backend/.env.local`.
-* **Action Required:** Repeat the process or format `public.pem` to fill `JWT_PUBLIC_KEY` in `backend/.env.local`.
+- **Action Required:** Copy the output of the `awk` command into `JWT_PRIVATE_KEY` inside `backend/.env.local`.
+- **Action Required:** Repeat the process or format `public.pem` to fill `JWT_PUBLIC_KEY` in `backend/.env.local`.
 
 ### 3. Copy and Fill Environment Files
 
@@ -53,8 +162,8 @@ cp backend/.env.example backend/.env.local
 cp frontend/.env.example frontend/.env.local
 ```
 
-* Fill in `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEY`, and **Razorpay TEST** keys inside `backend/.env.local`.
-* Set `WATI_ENABLED=false` for local development to disable active WhatsApp integrations.
+- Fill in `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEY`, and **Razorpay TEST** keys inside `backend/.env.local`.
+- Set `WATI_ENABLED=false` for local development to disable active WhatsApp integrations.
 
 ### 4. Start All Services
 
@@ -64,7 +173,7 @@ Launch the infrastructure via Docker. The initial run will download required Doc
 make up
 ```
 
-* **Services started:** Backend (Port `8000`), Frontend (Port `3000`), Postgres (Port `5432`), Redis (Port `6379`).
+- **Services started:** Backend (Port `8000`), Frontend (Port `3000`), Postgres (Port `5432`), Redis (Port `6379`).
 
 To monitor the application runtime:
 
@@ -81,7 +190,7 @@ make migrate   # Runs 'alembic upgrade head' to build tables
 make seed      # Provisions the owner account and 5 default products
 ```
 
-* **Expected Output:** `✓ Seed complete. Login: admin / changeme123`
+- **Expected Output:** `✓ Seed complete. Login: admin / changeme123`
 
 ### 6. Verify Deployment
 
@@ -96,9 +205,9 @@ curl http://localhost:8000/health/ready  # Expected: {"status":"ready"} (Confirm
 
 Open these URLs in your browser to interact with the stack:
 
-* **API Documentation:** [http://localhost:8000/docs](http://localhost:8000/docs)
-* **Storefront Shop:** [http://localhost:3000/shop](http://localhost:3000/shop)
-* **Admin Dashboard:** [http://localhost:3000/login](http://localhost:3000/login) (Credentials: `admin` / `changeme123`)
+- **API Documentation:** [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Storefront Shop:** [http://localhost:3000/shop](http://localhost:3000/shop)
+- **Admin Dashboard:** [http://localhost:3000/login](http://localhost:3000/login) (Credentials: `admin` / `changeme123`)
 
 ---
 
@@ -106,9 +215,8 @@ Open these URLs in your browser to interact with the stack:
 
 The environment supports hot-reloading on both frontend and backend layers. Saving changes to local files triggers immediate updates inside containers.
 
-* **Start Stack:** `make up`
-* **Stop Stack:** `make down`
-
+- **Start Stack:** `make up`
+- **Stop Stack:** `make down`
 
 # Lakhimpur Agri-Business Platform
 
@@ -122,7 +230,7 @@ from Lakhimpur district, Assam. Built by a solo engineer.
 - **Dashboard** (`/dashboard`) — owner manages inventory, orders, P&L,
   farm seasons, petha batches, and sees real-time profit to ₹0.00001
 
-## Tech stack all latests 
+## Tech stack all latests
 
 | Layer        | Technology                        |
 |---|---|
@@ -164,7 +272,7 @@ make migrate # runs Alembic migrations
 make seed    # creates owner account + 5 default products
 ```
 
-Open http://localhost:3000/login — username: `admin`, password: `changeme123`
+Open <http://localhost:3000/login> — username: `admin`, password: `changeme123`
 
 ## Daily workflow
 
@@ -202,11 +310,12 @@ lakhimpur-biz/
 
 ## API documentation
 
-Running locally: http://localhost:8000/docs (disabled in production)
+Running locally: <http://localhost:8000/docs> (disabled in production)
 
 ## Deployment
 
 Push to `main` → GitHub Actions:
+
 1. Runs all tests (backend + frontend)
 2. Deploys backend to Railway
 3. Deploys frontend to Vercel
@@ -218,7 +327,4 @@ Set secrets in GitHub repo settings — see Stage 5 documentation.
 See `backend/.env.example` and `frontend/.env.example` for all required variables.
 Production secrets live in Railway and Vercel dashboards — never in git.
 
-
-
-
-touch orders/{schemas,repository,service,router,__init__}.py
+touch finance/{schemas,repository,service,router,**init**}.py
