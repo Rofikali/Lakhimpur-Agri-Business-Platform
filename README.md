@@ -217,3 +217,8 @@ Set secrets in GitHub repo settings — see Stage 5 documentation.
 
 See `backend/.env.example` and `frontend/.env.example` for all required variables.
 Production secrets live in Railway and Vercel dashboards — never in git.
+
+
+
+
+touch orders/{schemas,repository,service,router,__init__}.py
