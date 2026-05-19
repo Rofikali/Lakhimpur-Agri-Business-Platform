@@ -327,4 +327,25 @@ Set secrets in GitHub repo settings — see Stage 5 documentation.
 See `backend/.env.example` and `frontend/.env.example` for all required variables.
 Production secrets live in Railway and Vercel dashboards — never in git.
 
-touch finance/{schemas,repository,service,router,**init**}.py
+touch notify/{schemas,repository,service,router,**init**}.py
+
+Step 1:  Create stubs (make app boot)
+Step 2:  Build auth  → make test-unit → git commit
+Step 3:  Build products + inventory → test → commit
+Step 4:  Build orders → test order flow → commit
+Step 5:  Build payments → test webhook → commit
+Step 6:  Build pl_engine → test P&L accuracy → commit
+Step 7:  Build farm → test milling yield → commit
+Step 8:  Build petha → test batch cost → commit
+Step 9:  Build notify → test WhatsApp (WATI disabled) → commit
+Step 10: Build finance router (fixed_costs, assets) → commit
+Step 11: Add scheduler (daily summary) → commit
+Step 12: make test-cov → must be ≥ 75% overall, ≥ 95% pl_engine
+
+After all 12 steps:
+  make up
+  make migrate
+  make seed
+  curl <http://localhost:8000/health/ready>  → {"status":"ready"}
+  Open <http://localhost:3000/login> → admin/changeme123
+  ✅ Stage 6 DONE — move to Stage 7 (Testing)
