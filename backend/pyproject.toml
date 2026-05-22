@@ -156,29 +156,22 @@ python_files = [
 # =========================================================
 # COVERAGE
 # =========================================================
-
 [tool.coverage.run]
-source = [
-    "modules",
-    "shared",
-    "core",
-]
-
-omit = [
-    "*/migrations/*",
-    "*/tests/*",
-    "scripts/*",
-]
+source  = ["modules", "shared", "core"]
+omit    = ["*/migrations/*", "*/tests/*", "scripts/*", "*/conftest*"]
 
 [tool.coverage.report]
-fail_under = 75
-
+fail_under    = 75
+show_missing  = true
 exclude_lines = [
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "pragma: no cover",
 ]
 
-show_missing = true
+[tool.coverage.html]
+directory = "htmlcov"
 
 # =========================================================
 # MYPY
