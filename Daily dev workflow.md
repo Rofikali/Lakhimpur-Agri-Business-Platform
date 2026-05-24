@@ -182,3 +182,78 @@ VERCEL_TOKEN	From vercel.com → Settings → Tokens	Deploy frontend
 VERCEL_ORG_ID	From vercel.com → Team settings	Deploy frontend
 VERCEL_PROJECT_ID	From vercel.com → Project settings	Deploy frontend
 CODECOV_TOKEN	From codecov.io (optional)	Coverage reports
+
+
+# Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# or
+pacman -S uv  # if available in Arch repos
+
+# Install PostgreSQL and Redis
+pacman -S postgresql redis
+
+# Initialize PostgreSQL
+initdb -D /var/lib/postgres/data
+
+# Start services
+systemctl start postgresql redis
+# or in Codespaces (no systemctl):
+    pg_ctl start -D /var/lib/postgres/data
+    redis-server --daemonize yes    
+
+# Install packages + uv
+pacman -S --noconfirm python postgresql redis nodejs npm curl
+curl -LsSf https://astral.sh/uv/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
+
+# PostgreSQL init
+sudo -u postgres initdb -D /var/lib/postgres/data --locale=C.UTF-8
+sudo -u postgres pg_ctl start -D /var/lib/postgres/data \
+  -l /var/log/postgresql.log -o "-p 5432" -w
+sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'devpassword';"
+sudo -u postgres createdb lakhimpur_dev
+sudo -u postgres createdb lakhimpur_test
+
+# Redis
+redis-server --daemonize yes --bind 127.0.0.1 --logfile /var/log/redis.log
+
+# Install Python + Node deps
+cd backend && uv sync --all-groups
+cd ../frontend && npm install
+
+
+# Start services
+make up
+
+# Copy and fill env
+cp backend/.env.example backend/.env.local
+# Generate JWT keys and paste into .env.local
+make gen-keys
+# (copy the output into backend/.env.local manually)
+
+# Run migrations + seed
+make migrate
+make seed
+# → ✓ Seed complete. Login: admin / changeme123
+
+# Terminal 1: backend
+make dev-be
+# → INFO:     Uvicorn running on http://0.0.0.0:8000
+
+# Terminal 2: frontend
+make dev-fe
+# → Nuxt 3.x.x starts on http://localhost:3000
+
+# Verify in Terminal 3:
+make health
+# → {"status": "ok"}
+# → {"status": "ready"}
+
+
+mkdir -p /var/log
+touch /var/log/postgresql.log
+chmod 777 /var/log/postgresql.log
+
+
+chmod +x .devcontainer/*.sh
+.devcontainer/start-services.sh

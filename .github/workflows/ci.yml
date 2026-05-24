@@ -1,17 +1,15 @@
 name: CI/CD
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  push:    { branches: [main] }
+  pull_request: { branches: [main] }
 
 jobs:
   test-backend:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:15-alpine
+        image: postgres:16-alpine
         env:
           POSTGRES_DB:       lakhimpur_test
           POSTGRES_USER:     postgres
@@ -19,57 +17,62 @@ jobs:
         ports: ["5432:5432"]
         options: >-
           --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
+          --health-interval 5s --health-retries 10
       redis:
         image: redis:7-alpine
         ports: ["6379:6379"]
         options: >-
           --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-retries 5
+          --health-interval 5s --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.11" }
 
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: pip-${{ hashFiles('backend/requirements*.txt') }}
+      # ── Install uv ──────────────────────────────────────────────────────────
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with: { version: "latest", enable-cache: true }
 
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+
+      # ── Cache uv deps ────────────────────────────────────────────────────────
       - name: Install dependencies
-        run: |
-          pip install -r backend/requirements.txt
-          pip install -r backend/requirements-dev.txt
+        run: cd backend && uv sync --all-groups --frozen
 
-      - name: Lint (ruff + black check)
+      # ── Lint ────────────────────────────────────────────────────────────────
+      - name: Lint (ruff + black)
         run: |
           cd backend
-          ruff check .
-          black --check .
+          uv run ruff check .
+          uv run black --check .
 
+      # ── Run tests ────────────────────────────────────────────────────────────
       - name: Run tests + coverage
         run: |
           cd backend
-          pytest tests/ \
-            --cov=. \
-            --cov-report=xml \
+          uv run pytest tests/ \
+            --cov=. --cov-report=xml \
             --cov-fail-under=75 \
-            -v
+            -n auto -v
         env:
-          DATABASE_URL:           postgresql+asyncpg://postgres:testpassword@localhost:5432/lakhimpur_test
+          DATABASE_URL:           postgresql+asyncpg://postgres:testpassword@localhost/lakhimpur_test
           REDIS_URL:              redis://localhost:6379/0
           ENVIRONMENT:            test
           JWT_PRIVATE_KEY:        ${{ secrets.JWT_PRIVATE_KEY_TEST }}
           JWT_PUBLIC_KEY:         ${{ secrets.JWT_PUBLIC_KEY_TEST }}
           RAZORPAY_KEY_ID:        rzp_test_dummy
           RAZORPAY_KEY_SECRET:    test_dummy
-          RAZORPAY_WEBHOOK_SECRET:test_webhook_dummy
+          RAZORPAY_WEBHOOK_SECRET:test_webhook_secret
           WATI_ENABLED:           "false"
+
+      # ── P&L engine 95% ───────────────────────────────────────────────────────
+      - name: P&L engine coverage (must be ≥95%)
+        run: |
+          cd backend
+          uv run pytest tests/unit/test_pl_calculator.py \
+            --cov=modules/pl_engine/calculator.py \
+            --cov-fail-under=95
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
@@ -80,30 +83,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: "20", cache: "npm", cache-dependency-path: frontend/package-lock.json }
+        with: { node-version: "20", cache: "npm",
+                cache-dependency-path: frontend/package-lock.json }
       - run: cd frontend && npm ci
       - run: cd frontend && npm run typecheck
       - run: cd frontend && npm test
 
-  deploy-backend:
+  deploy:
     needs: [test-backend, test-frontend]
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy to Railway
+      - name: Deploy backend → Railway
         uses: railwayapp/cli-action@v1
-        with:
-          railway-token: ${{ secrets.RAILWAY_TOKEN }}
-          command: up --service backend --detach
-
-  deploy-frontend:
-    needs: [test-backend, test-frontend]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: amondnet/vercel-action@v25
+        with: { railway-token: ${{ secrets.RAILWAY_TOKEN }},
+                command: "up --service backend --detach" }
+      - name: Deploy frontend → Vercel
+        uses: amondnet/vercel-action@v25
         with:
           vercel-token:      ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id:     ${{ secrets.VERCEL_ORG_ID }}

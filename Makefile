@@ -1,73 +1,131 @@
-# Makefile — all dev commands
-.PHONY: up down restart logs shell-be shell-db shell-fe \
-        migrate seed test test-unit test-cov lint format \
-        generate-migration build-prod
+# ── Config ────────────────────────────────────────────────────────────────────
+UV      := cd backend && uv run
+PG_DATA := /var/lib/postgres/data
 
-up:                                               ## Start all services
-	docker compose up -d
+.PHONY: up down dev-be dev-fe migrate rollback seed reset-db \
+        gen-keys install test test-unit test-cov test-pl \
+        lint format typecheck shell help
 
-down:                                             ## Stop all services
-	docker compose down
+# ── Services ──────────────────────────────────────────────────────────────────
+up:                                            ## Start PostgreSQL + Redis
+	@sudo -u postgres pg_ctl status -D $(PG_DATA) > /dev/null 2>&1 \
+	  || sudo -u postgres pg_ctl start -D $(PG_DATA) \
+	       -l /var/log/postgresql.log -o "-p 5432" -w
+	@redis-cli ping > /dev/null 2>&1 \
+	  || redis-server --daemonize yes --bind 127.0.0.1 \
+	       --logfile /var/log/redis.log
+	@echo "✓ PostgreSQL + Redis running"
+	@echo ""
+	@echo "Now run in two terminals:"
+	@echo "  Terminal 1: make dev-be"
+	@echo "  Terminal 2: make dev-fe"
 
-restart:                                          ## Restart backend only
-	docker compose restart backend
+down:                                          ## Stop all services
+	@sudo -u postgres pg_ctl stop -D $(PG_DATA) 2>/dev/null || true
+	@pkill redis-server 2>/dev/null || true
+	@echo "✓ Services stopped"
 
-logs:                                             ## Follow backend logs
-	docker compose logs -f backend
+# ── Dev servers ───────────────────────────────────────────────────────────────
+dev-be:                                        ## Run backend (hot reload)
+	$(UV) uvicorn main:app \
+	  --host 0.0.0.0 --port 8000 --reload \
+	  --reload-dir modules --reload-dir core --reload-dir shared
 
-logs-all:                                         ## Follow all logs
-	docker compose logs -f
+dev-fe:                                        ## Run frontend (hot reload)
+	cd frontend && pnpm run dev
 
-shell-be:                                         ## Shell into backend container
-	docker compose exec backend bash
+# ── Keys ──────────────────────────────────────────────────────────────────────
+gen-keys:                                      ## Generate RSA JWT keys → print for .env.local
+	@openssl genrsa -out /tmp/jwt_priv.pem 2048 2>/dev/null
+	@openssl rsa -in /tmp/jwt_priv.pem -pubout -out /tmp/jwt_pub.pem 2>/dev/null
+	@echo ""
+	@echo "Add these to backend/.env.local:"
+	@echo ""
+	@printf 'JWT_PRIVATE_KEY='
+	@awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}' /tmp/jwt_priv.pem
+	@echo ""
+	@printf 'JWT_PUBLIC_KEY='
+	@awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}' /tmp/jwt_pub.pem
+	@echo ""
+	@rm /tmp/jwt_priv.pem /tmp/jwt_pub.pem
+	@echo "(keys deleted from /tmp)"
 
-shell-db:                                         ## PostgreSQL shell
-	docker compose exec db psql -U postgres -d lakhimpur_dev
+# ── Install ───────────────────────────────────────────────────────────────────
+install:                                       ## Sync all deps (uv + npm)
+	cd backend  && uv sync --all-groups
+	cd frontend && npm install
 
-shell-fe:                                         ## Shell into frontend container
-	docker compose exec frontend sh
+lock:                                          ## Update uv.lock
+	cd backend && uv lock
 
-migrate:                                          ## Run Alembic migrations
-	docker compose exec backend alembic upgrade head
+# ── Database ──────────────────────────────────────────────────────────────────
+migrate:                                       ## Run Alembic migrations (head)
+	$(UV) alembic upgrade head
 
-generate-migration:                               ## Generate migration (MSG=required)
-## Usage: make generate-migration MSG="add product images"
-	docker compose exec backend alembic revision --autogenerate -m "$(MSG)"
+rollback:                                      ## Roll back one migration
+	$(UV) alembic downgrade -1
 
-rollback:                                         ## Roll back one migration
-	docker compose exec backend alembic downgrade -1
+generate-migration:                            ## New migration — MSG=required
+	$(UV) alembic revision --autogenerate -m "$(MSG)"
 
-seed:                                             ## Seed database (owner + products)
-	docker compose exec backend python scripts/seed.py
+seed:                                          ## Seed DB (owner + 5 products)
+	$(UV) python scripts/seed.py
 
-reset-db:                                         ## ⚠ Wipe and reseed (dev only)
-	docker compose exec backend alembic downgrade base
-	docker compose exec backend alembic upgrade head
-	docker compose exec backend python scripts/seed.py
+reset-db:                                      ## ⚠ Wipe + remigrate + reseed
+	$(UV) alembic downgrade base
+	$(UV) alembic upgrade head
+	$(UV) python scripts/seed.py
 
-test:                                             ## Run all tests
-	docker compose exec backend pytest tests/ -v
+shell-db:                                      ## PostgreSQL shell
+	psql -U postgres -d lakhimpur_dev
 
-test-unit:                                        ## Unit tests only (fast, no DB)
-	docker compose exec backend pytest tests/unit/ -v
+# ── Tests ─────────────────────────────────────────────────────────────────────
+test:                                          ## All tests
+	$(UV) pytest tests/ -v
 
-test-cov:                                         ## Tests with coverage report
-	docker compose exec backend pytest tests/ --cov=. --cov-report=term-missing --cov-fail-under=75
+test-unit:                                     ## Unit tests only (fast, no DB)
+	$(UV) pytest tests/unit/ -v --tb=short
 
-lint:                                             ## Lint backend (ruff + black)
-	docker compose exec backend ruff check .
-	docker compose exec backend black --check .
+test-cov:                                      ## Tests + coverage (must hit 75%)
+	$(UV) pytest tests/ \
+	  --cov=. --cov-report=term-missing \
+	  --cov-report=html:htmlcov \
+	  --cov-fail-under=75 -v
 
-format:                                           ## Auto-fix backend formatting
-	docker compose exec backend ruff check --fix .
-	docker compose exec backend black .
+test-pl:                                       ## P&L engine only (must hit 95%)
+	$(UV) pytest tests/unit/test_pl_calculator.py \
+	  --cov=modules/pl_engine/calculator.py \
+	  --cov-fail-under=95 -v
 
-typecheck-fe:                                     ## TypeScript check frontend
-	docker compose exec frontend npm run typecheck
+test-fast:                                     ## Parallel test run (fastest)
+	$(UV) pytest tests/ -n auto --tb=short
 
-test-fe:                                          ## Frontend tests
-	docker compose exec frontend npm test
+# ── Code quality ──────────────────────────────────────────────────────────────
+lint:                                          ## ruff + black check
+	$(UV) ruff check .
+	$(UV) black --check .
 
-help:                                             ## Show this help
+format:                                        ## Auto-fix formatting
+	$(UV) ruff check --fix .
+	$(UV) black .
+
+typecheck:                                     ## mypy type check
+	$(UV) mypy modules/ core/ shared/ --ignore-missing-imports
+
+# ── Dev utilities ─────────────────────────────────────────────────────────────
+shell:                                         ## IPython REPL in project env
+	$(UV) ipython
+
+logs-pg:                                       ## Tail PostgreSQL logs
+	tail -f /var/log/postgresql.log
+
+logs-redis:                                    ## Tail Redis logs
+	tail -f /var/log/redis.log
+
+health:                                        ## Check backend health
+	curl -s http://localhost:8000/health | python -m json.tool
+	curl -s http://localhost:8000/health/ready | python -m json.tool
+
+help:                                          ## Show all commands
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
-	  awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	  awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2}'
