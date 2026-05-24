@@ -2,9 +2,7 @@
 Notification tests — verify fire-and-forget behaviour.
 WATI is always mocked — never sends real messages in tests.
 """
-import pytest
 import uuid
-from datetime import date
 
 
 class TestNotifications:

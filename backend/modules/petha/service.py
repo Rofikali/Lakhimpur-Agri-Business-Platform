@@ -1,12 +1,14 @@
 import uuid
-from decimal import Decimal, ROUND_HALF_UP
 from datetime import date, timedelta
+from decimal import Decimal
+
+from modules.petha.models import PethaBatch
+
+from modules.inventory.schemas import StockEntryCreate
+from modules.inventory.service import InventoryService
 from modules.petha.repository import PethaRepository
 from modules.petha.schemas import BatchCreate, BatchOutcome
-from modules.petha.models import PethaBatch
-from modules.inventory.service import InventoryService
-from modules.inventory.schemas import StockEntryCreate
-from shared.exceptions import BatchNotFoundError, BatchAlreadyCompletedError, BatchExpiredError
+from shared.exceptions import BatchAlreadyCompletedError, BatchExpiredError, BatchNotFoundError
 
 DP5 = Decimal("0.00001")
 

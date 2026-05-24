@@ -1,10 +1,11 @@
 import uuid
-from decimal import Decimal
-from datetime import datetime, timezone
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
+
 from modules.orders.models import Order, OrderItem
 
 
@@ -71,7 +72,7 @@ class OrderRepository:
         return list((await self.db.execute(q)).scalars().all())
 
     async def _next_number(self) -> str:
-        year = datetime.now(timezone.utc).year
+        year = datetime.now(UTC).year
         n = (
             await self.db.execute(
                 select(func.count(Order.id)).where(func.extract("year", Order.created_at) == year)

@@ -1,9 +1,13 @@
 # core / middleware / logging.py
 
-import time, json, logging
-from datetime import datetime, timezone
+import json
+import logging
+import time
+from datetime import UTC, datetime
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+
 from core.config import settings
 
 logger = logging.getLogger("api")
@@ -31,7 +35,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         ms = round((time.perf_counter() - start) * 1000, 2)
 
         log = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "level": "WARNING" if response.status_code >= 400 else "INFO",
             "event": "http_request",
             "method": request.method,

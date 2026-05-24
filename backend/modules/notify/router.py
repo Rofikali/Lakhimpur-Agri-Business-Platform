@@ -5,11 +5,12 @@ This router exposes a test endpoint (dev only) and a log endpoint.
 """
 
 from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
 from modules.notify.models import Notification
-from core.dependencies import require_owner, get_db_session
+from sqlalchemy import desc, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from core.config import settings
+from core.dependencies import get_db_session, require_owner
 
 router = APIRouter(prefix="/api/notify", tags=["notify"])
 

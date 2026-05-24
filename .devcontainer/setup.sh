@@ -21,6 +21,8 @@ install_system_packages() {
     pacman -S --noconfirm \
         base-devel \
         git \
+        git-lfs \
+        less \
         curl \
         wget \
         unzip \
@@ -32,6 +34,9 @@ install_system_packages() {
         postgresql \
         redis \
         openssl
+
+    # Initialize Git LFS
+    git lfs install
 }
 
 install_uv() {

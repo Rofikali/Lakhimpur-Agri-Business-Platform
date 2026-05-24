@@ -2,7 +2,6 @@
 Farm milling yield and cost calculation unit tests.
 """
 
-import pytest
 from decimal import Decimal
 
 

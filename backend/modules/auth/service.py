@@ -1,9 +1,10 @@
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
+
+from core.config import settings
+from core.redis import blocklist_token
+from core.security import create_access_token, verify_password
 from modules.auth.repository import AuthRepository
 from modules.auth.schemas import LoginRequest, TokenResponse
-from core.security import verify_password, create_access_token
-from core.redis import blocklist_token
-from core.config import settings
 from shared.exceptions import InvalidCredentialsError
 
 
@@ -21,7 +22,7 @@ class AuthService:
             raise InvalidCredentialsError()
 
         token, jti = create_access_token(str(owner.id))
-        expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.JWT_EXPIRY_HOURS)
+        expires_at = datetime.now(UTC) + timedelta(hours=settings.JWT_EXPIRY_HOURS)
 
         return (
             token,
@@ -41,5 +42,5 @@ class AuthService:
     async def refresh(self, current_payload: dict) -> tuple[str, str, datetime]:
         """Issue a fresh token for the same owner."""
         token, jti = create_access_token(current_payload["sub"])
-        expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.JWT_EXPIRY_HOURS)
+        expires_at = datetime.now(UTC) + timedelta(hours=settings.JWT_EXPIRY_HOURS)
         return token, jti, expires_at

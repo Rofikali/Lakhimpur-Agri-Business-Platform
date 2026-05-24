@@ -1,10 +1,12 @@
 import uuid
+from datetime import UTC, datetime
 from decimal import Decimal
-from datetime import datetime, timezone
-from sqlalchemy import String, Boolean, Numeric, TIMESTAMP, Text, ForeignKey
+
+from sqlalchemy import TIMESTAMP, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import mapped_column, Mapped, relationship
-from shared.models.base import Base, MONEY, QTY
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from shared.models.base import MONEY, QTY, Base
 
 
 class Order(Base):
@@ -27,12 +29,12 @@ class Order(Base):
     cancel_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     razorpay_order_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc)
+        TIMESTAMP(timezone=True), default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
     deleted_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     items: Mapped[list["OrderItem"]] = relationship(
@@ -72,9 +74,9 @@ class Payment(Base):
     paid_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     refunded_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc)
+        TIMESTAMP(timezone=True), default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc)
+        TIMESTAMP(timezone=True), default=lambda: datetime.now(UTC)
     )
     order = relationship("Order", back_populates="payment")

@@ -1,7 +1,9 @@
 """WATI (WhatsApp Business API) client."""
 
-import httpx
 import logging
+
+import httpx
+
 from core.config import settings
 
 logger = logging.getLogger("notify.wati")

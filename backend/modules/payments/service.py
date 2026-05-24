@@ -1,13 +1,13 @@
-import uuid
 import logging
+import uuid
+from datetime import UTC, datetime
 from decimal import Decimal
-from datetime import datetime, timezone
-from sqlalchemy.ext.asyncio import AsyncSession
+
 from sqlalchemy import select
-from modules.orders.models import Payment, Order
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from modules.orders.models import Payment
 from modules.payments import razorpay as rzp_client
-from core.redis import cache_get, cache_set
-from shared.exceptions import WebhookSignatureInvalidError
 
 logger = logging.getLogger("payments")
 
@@ -42,7 +42,7 @@ class PaymentService:
             credit_due_date=credit_due_date,
         )
         if status == "paid":
-            payment.paid_at = datetime.now(timezone.utc)
+            payment.paid_at = datetime.now(UTC)
         self.db.add(payment)
         await self.db.flush()
         return payment
@@ -58,7 +58,7 @@ class PaymentService:
             payment.status = "paid"
             payment.razorpay_payment_id = rzp_payment_id
             payment.razorpay_signature = rzp_signature
-            payment.paid_at = datetime.now(timezone.utc)
+            payment.paid_at = datetime.now(UTC)
             self.db.add(payment)
             await self.db.flush()
 
@@ -75,7 +75,7 @@ class PaymentService:
             payment.credit_due_date = credit_due_date
         else:
             payment.status = "paid"
-            payment.paid_at = datetime.now(timezone.utc)
+            payment.paid_at = datetime.now(UTC)
         self.db.add(payment)
         await self.db.flush()
         return {

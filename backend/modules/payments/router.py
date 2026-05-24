@@ -1,21 +1,23 @@
-import uuid
 import json
 import logging
-from fastapi import APIRouter, Depends, Request, BackgroundTasks, HTTPException
+import uuid
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from core.dependencies import get_db_session, require_owner
+from core.redis import cache_get, cache_set
+from modules.inventory.repository import InventoryRepository
+from modules.inventory.service import InventoryService
+from modules.notify.service import NotifyService
+from modules.orders.repository import OrderRepository
+from modules.orders.service import OrderService
+from modules.payments import razorpay as rzp_client
 from modules.payments.schemas import MarkPaidRequest
 from modules.payments.service import PaymentService
-from modules.payments import razorpay as rzp_client
-from modules.orders.service import OrderService
-from modules.orders.repository import OrderRepository
-from modules.products.service import ProductService
 from modules.products.repository import ProductRepository
-from modules.inventory.service import InventoryService
-from modules.inventory.repository import InventoryRepository
-from modules.notify.service import NotifyService
+from modules.products.service import ProductService
 from shared.exceptions import WebhookSignatureInvalidError
-from core.dependencies import require_owner, get_db_session
-from core.redis import cache_get, cache_set
 
 logger = logging.getLogger("payments")
 router = APIRouter(prefix="/api/payments", tags=["payments"])
@@ -87,6 +89,7 @@ async def razorpay_webhook(
 
     # ── Step 3: Find our order by Razorpay order_id ─────────────────────────
     from sqlalchemy import select
+
     from modules.orders.models import Order
 
     result = await svc.db.execute(select(Order).where(Order.razorpay_order_id == rzp_order_id))
@@ -125,8 +128,9 @@ async def outstanding_credits(
 ):
     """All credit sales not yet collected."""
     from sqlalchemy import select
-    from modules.orders.models import Payment, Order
     from sqlalchemy.orm import selectinload
+
+    from modules.orders.models import Payment
 
     result = await db.execute(
         select(Payment)

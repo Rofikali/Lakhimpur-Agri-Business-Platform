@@ -1,16 +1,18 @@
 import uuid
-from fastapi import APIRouter, Depends, Query, BackgroundTasks
+
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from core.dependencies import get_db_session, require_owner
+from modules.inventory.repository import InventoryRepository
+from modules.inventory.service import InventoryService
+from modules.notify.service import NotifyService
+from modules.orders.repository import OrderRepository
 from modules.orders.schemas import OrderCreate, StatusUpdate
 from modules.orders.service import OrderService
-from modules.orders.repository import OrderRepository
-from modules.products.service import ProductService
-from modules.products.repository import ProductRepository
-from modules.inventory.service import InventoryService
-from modules.inventory.repository import InventoryRepository
 from modules.payments.service import PaymentService
-from modules.notify.service import NotifyService
-from core.dependencies import require_owner, get_db_session
+from modules.products.repository import ProductRepository
+from modules.products.service import ProductService
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 

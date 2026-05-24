@@ -18,9 +18,9 @@ async def health():
 
 # Add these to the existing main.py from Stage 5:
 
-from modules.finance.router import router as finance_router
-from core.scheduler import start_scheduler
 from core.dependencies import register_exception_handlers
+from core.scheduler import start_scheduler
+from modules.finance.router import router as finance_router
 
 # Include finance router alongside others:
 app.include_router(finance_router)

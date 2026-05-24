@@ -1,17 +1,17 @@
 import uuid
 from decimal import Decimal
-from datetime import date
-from modules.inventory.repository import InventoryRepository
-from modules.inventory.schemas import StockEntryCreate, MonthlyStockCreate
+
 from modules.inventory.models import InventoryStock
+
+from core.redis import cache_delete, should_send_alert
+from modules.inventory.repository import InventoryRepository
+from modules.inventory.schemas import MonthlyStockCreate, StockEntryCreate
 from modules.products.repository import ProductRepository
 from shared.exceptions import (
-    StockInsufficientError,
-    StockNegativeError,
     ClosingStockExceedsMaxError,
     ProductNotFoundError,
+    StockInsufficientError,
 )
-from core.redis import cache_delete, should_send_alert
 
 
 class InventoryService:

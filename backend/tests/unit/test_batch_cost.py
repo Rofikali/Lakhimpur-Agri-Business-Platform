@@ -2,10 +2,8 @@
 Petha batch cost unit tests — absorption costing.
 """
 
-import pytest
 from decimal import Decimal
 from unittest.mock import MagicMock
-from modules.petha.service import PethaService
 
 
 def _batch(planned, good, rejected, total_cost, variety="narikal"):

@@ -4,15 +4,17 @@ from fastapi import APIRouter
 router = APIRouter()
 # routes added here as each module is built
 import uuid
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from core.dependencies import get_db_session, require_owner
+from modules.inventory.repository import InventoryRepository
+from modules.inventory.service import InventoryService
+from modules.petha.repository import PethaRepository
 from modules.petha.schemas import BatchCreate, BatchOutcome
 from modules.petha.service import PethaService
-from modules.petha.repository import PethaRepository
-from modules.inventory.service import InventoryService
-from modules.inventory.repository import InventoryRepository
 from modules.products.repository import ProductRepository
-from core.dependencies import require_owner, get_db_session
 
 router = APIRouter(prefix="/api/petha", tags=["petha"])
 

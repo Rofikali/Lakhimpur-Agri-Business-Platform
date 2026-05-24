@@ -1,12 +1,13 @@
 # core / security.py
-from datetime import datetime, timedelta, timezone
-from typing import Any
 import uuid
-from jose import jwt, JWTError
-from passlib.context import CryptContext
-from fastapi import HTTPException, Request, status
-from core.config import settings
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
+from fastapi import HTTPException, Request, status
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+
+from core.config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -27,7 +28,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 def create_access_token(owner_id: str) -> tuple[str, str]:
     """Returns (token, jti). jti used for blocklist on logout."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     jti = str(uuid.uuid4())
     payload = {
         "sub": owner_id,

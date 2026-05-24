@@ -1,12 +1,14 @@
 import uuid
 from datetime import date, timedelta
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from modules.inventory.schemas import StockEntryCreate, MonthlyStockCreate
-from modules.inventory.service import InventoryService
+
+from core.dependencies import get_db_session, require_owner
 from modules.inventory.repository import InventoryRepository
+from modules.inventory.schemas import MonthlyStockCreate, StockEntryCreate
+from modules.inventory.service import InventoryService
 from modules.products.repository import ProductRepository
-from core.dependencies import require_owner, get_db_session
 
 router = APIRouter(prefix="/api/inventory", tags=["inventory"])
 

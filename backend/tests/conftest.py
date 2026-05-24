@@ -1,27 +1,27 @@
 import asyncio
-import uuid
-import pytest
 import hashlib
 import hmac
 import json
-from decimal import Decimal
-from datetime import date, timedelta
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from main import app
-from shared.models.base import Base
-from core.database import get_db
-from core.security import hash_password
-from modules.auth.models import Owner
-from modules.products.models import Product
-from modules.inventory.models import InventoryStock, StockEntry
-from modules.orders.models import Order, OrderItem, Payment
-from modules.finance.models import Asset, FixedCost
-from core.config import settings
 
 # ── Test DB URL ───────────────────────────────────────────────────────────────
 # Set in CI via env var; fallback to local test DB
 import os
+from datetime import date
+from decimal import Decimal
+
+import pytest
+from httpx import ASGITransport, AsyncClient
+from modules.inventory.models import InventoryStock
+from modules.products.models import Product
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+
+from core.config import settings
+from core.database import get_db
+from core.security import hash_password
+from main import app
+from modules.auth.models import Owner
+from modules.finance.models import Asset, FixedCost
+from shared.models.base import Base
 
 TEST_DB = os.getenv(
     "DATABASE_URL", "postgresql+asyncpg://postgres:testpassword@localhost:5432/lakhimpur_test"

@@ -3,10 +3,10 @@ P&L Engine unit tests — target 95%+ coverage of calculator.py.
 Pure function tests: no DB, no HTTP, no external services.
 """
 
-import pytest
 from decimal import Decimal
 from unittest.mock import MagicMock
-from modules.pl_engine.calculator import calculate, PLResult, ZERO
+
+from modules.pl_engine.calculator import ZERO, calculate
 
 
 def _entry(

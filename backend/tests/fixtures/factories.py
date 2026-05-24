@@ -3,18 +3,20 @@ Factory Boy factories for generating realistic test data.
 Use these in tests instead of manually building DB objects.
 """
 import uuid
-import factory
-from decimal import Decimal
 from datetime import date, timedelta
+from decimal import Decimal
+
+import factory
 from factory.alchemy import SQLAlchemyModelFactory
-from modules.auth.models import Owner
-from modules.products.models import Product
-from modules.inventory.models import InventoryStock, StockEntry
-from modules.orders.models import Order, OrderItem, Payment
-from modules.farm.models import FarmSeason, FarmInput
+from modules.farm.models import FarmSeason
+from modules.inventory.models import InventoryStock
 from modules.petha.models import PethaBatch
-from modules.finance.models import Asset, FixedCost
+from modules.products.models import Product
+
 from core.security import hash_password
+from modules.auth.models import Owner
+from modules.finance.models import Asset, FixedCost
+from modules.orders.models import Order
 
 
 class BaseFactory(SQLAlchemyModelFactory):

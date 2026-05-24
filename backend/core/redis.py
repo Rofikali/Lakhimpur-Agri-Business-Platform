@@ -1,7 +1,9 @@
 # ore / redis.py
-from redis.asyncio import Redis, from_url
-from typing import Any
 import json
+from typing import Any
+
+from redis.asyncio import Redis, from_url
+
 from core.config import settings
 
 _redis: Redis | None = None

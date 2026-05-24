@@ -4,10 +4,8 @@ All arithmetic: Python Decimal — never float.
 Called by PLService after data is fetched.
 """
 
-from decimal import Decimal, ROUND_HALF_UP
 from dataclasses import dataclass, field
-from typing import Any
-
+from decimal import ROUND_HALF_UP, Decimal
 
 DP5 = Decimal("0.00001")
 ZERO = Decimal("0.00000")

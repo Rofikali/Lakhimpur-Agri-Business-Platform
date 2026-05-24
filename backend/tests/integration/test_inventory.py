@@ -1,7 +1,6 @@
-import pytest
 import uuid
-from decimal import Decimal
 from datetime import date
+from decimal import Decimal
 
 
 class TestStockEntry:

@@ -3,14 +3,16 @@ Pydantic schema validation tests.
 Most critical: float MUST be rejected for all money fields.
 """
 
-import pytest
 import uuid
-from decimal import Decimal
 from datetime import date
+from decimal import Decimal
+
+import pytest
 from pydantic import ValidationError
-from modules.products.schemas import ProductCreate
-from modules.orders.schemas import OrderCreate, OrderItemCreate
+
 from modules.inventory.schemas import StockEntryCreate
+from modules.orders.schemas import OrderCreate, OrderItemCreate
+from modules.products.schemas import ProductCreate
 
 
 class TestFloatRejection:

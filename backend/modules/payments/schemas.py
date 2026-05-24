@@ -1,7 +1,7 @@
 import uuid
-from decimal import Decimal
 from datetime import date
 from typing import Any
+
 from pydantic import BaseModel, field_validator
 
 

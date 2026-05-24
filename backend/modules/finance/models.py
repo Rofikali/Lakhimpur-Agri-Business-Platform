@@ -1,10 +1,12 @@
 import uuid
+from datetime import UTC, date, datetime
 from decimal import Decimal
-from datetime import datetime, date, timezone
-from sqlalchemy import String, Boolean, Integer, TIMESTAMP, Date
+
+from sqlalchemy import TIMESTAMP, Boolean, Date, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import mapped_column, Mapped
-from shared.models.base import Base, MONEY
+from sqlalchemy.orm import Mapped, mapped_column
+
+from shared.models.base import MONEY, Base
 
 
 class FixedCost(Base):
@@ -16,10 +18,10 @@ class FixedCost(Base):
     monthly_amount: Mapped[Decimal] = mapped_column(MONEY, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc)
+        TIMESTAMP(timezone=True), default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc)
+        TIMESTAMP(timezone=True), default=lambda: datetime.now(UTC)
     )
     deleted_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
@@ -35,6 +37,6 @@ class Asset(Base):
     purchase_date: Mapped[date] = mapped_column(Date, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc)
+        TIMESTAMP(timezone=True), default=lambda: datetime.now(UTC)
     )
     deleted_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)

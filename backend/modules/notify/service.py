@@ -1,7 +1,8 @@
 import logging
+
+from core.config import settings
 from modules.notify import wati
 from modules.notify.templates import TEMPLATES
-from core.config import settings
 
 logger = logging.getLogger("notify")
 

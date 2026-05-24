@@ -2,11 +2,10 @@
 Critical edge cases — these represent real-world failure scenarios
 that MUST be handled correctly in production.
 """
-import pytest
-import uuid
 import asyncio
-from decimal import Decimal
+import uuid
 from datetime import date
+from decimal import Decimal
 
 
 class TestRaceConditions:
@@ -224,9 +223,10 @@ class TestWebhookSecurity:
         Attacker sends correct signature but tampered amount.
         Body hash won't match signature → rejected.
         """
-        import json
         import hashlib
         import hmac
+        import json
+
         from core.config import settings
 
         # Build payload with one amount

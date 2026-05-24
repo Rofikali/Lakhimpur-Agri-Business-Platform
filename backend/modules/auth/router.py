@@ -1,12 +1,11 @@
-from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Depends, Response, Request
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from core.dependencies import get_db_session, require_owner
+from core.security import clear_auth_cookie, set_auth_cookie
+from modules.auth.repository import AuthRepository
 from modules.auth.schemas import LoginRequest, TokenResponse
 from modules.auth.service import AuthService
-from modules.auth.repository import AuthRepository
-from core.security import set_auth_cookie, clear_auth_cookie
-from core.dependencies import require_owner, get_db_session
-from core.config import settings
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 

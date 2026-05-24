@@ -4,6 +4,7 @@ Registered in main.py on startup.
 """
 
 import logging
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
@@ -25,10 +26,10 @@ def start_scheduler(app) -> None:
 
 async def _daily_summary_job() -> None:
     from datetime import date
+
     from core.database import AsyncSessionLocal
-    from modules.pl_engine.service import PLService
     from modules.notify.service import NotifyService
-    from decimal import Decimal
+    from modules.pl_engine.service import PLService
 
     try:
         async with AsyncSessionLocal() as db:
@@ -39,7 +40,8 @@ async def _daily_summary_job() -> None:
             profit = pl.get("net_profit", "0")
 
             # Count today's orders
-            from sqlalchemy import select, func
+            from sqlalchemy import func, select
+
             from modules.orders.models import Order
 
             today = date.today()

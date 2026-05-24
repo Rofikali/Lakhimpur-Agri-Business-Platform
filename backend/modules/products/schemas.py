@@ -1,7 +1,8 @@
-from decimal import Decimal
-from pydantic import BaseModel, Field, field_validator, ConfigDict, computed_field
-from typing import Any
 import uuid
+from decimal import Decimal
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ProductCreate(BaseModel):

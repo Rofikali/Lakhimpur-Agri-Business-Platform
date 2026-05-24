@@ -1,7 +1,7 @@
 """Shared utility functions used across modules."""
 
 import re
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 DP2 = Decimal("0.01")
 DP5 = Decimal("0.00001")

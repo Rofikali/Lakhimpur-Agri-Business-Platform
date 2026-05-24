@@ -1,17 +1,17 @@
 import uuid
 from decimal import Decimal
-from datetime import datetime, timezone
+
 from fastapi import BackgroundTasks
+
+from modules.inventory.service import InventoryService
+from modules.notify.service import NotifyService
 from modules.orders.repository import OrderRepository
 from modules.orders.schemas import OrderCreate, StatusUpdate
-from modules.products.service import ProductService
 from modules.payments.service import PaymentService
-from modules.notify.service import NotifyService
-from modules.inventory.service import InventoryService
+from modules.products.service import ProductService
 from shared.exceptions import (
-    OrderNotFoundError,
-    OrderAlreadyCancelledError,
     InvalidStatusTransitionError,
+    OrderNotFoundError,
     StockInsufficientError,
 )
 

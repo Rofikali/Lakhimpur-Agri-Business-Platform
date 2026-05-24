@@ -1,13 +1,15 @@
-import uuid
 import re
+import uuid
+from datetime import UTC, datetime
 from decimal import Decimal
-from datetime import datetime, timezone
+
+from modules.inventory.models import InventoryStock
+from modules.products.models import Product
+
+from core.redis import cache_delete
 from modules.products.repository import ProductRepository
 from modules.products.schemas import ProductCreate, ProductUpdate
-from modules.products.models import Product
-from modules.inventory.models import InventoryStock
-from shared.exceptions import ProductNotFoundError, ProductInactiveError
-from core.redis import cache_delete
+from shared.exceptions import ProductInactiveError, ProductNotFoundError
 
 
 def _calculate_true_cost(
@@ -125,7 +127,7 @@ class ProductService:
         product = await self.repo.get_by_id(product_id)
         if not product:
             raise ProductNotFoundError(str(product_id))
-        product.deleted_at = datetime.now(timezone.utc)
+        product.deleted_at = datetime.now(UTC)
         product.is_active = False
         await self.repo.update(product)
         await cache_delete("products:list:active")

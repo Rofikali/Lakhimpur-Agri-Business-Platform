@@ -1,10 +1,9 @@
 import uuid
-from decimal import Decimal
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
-from sqlalchemy.orm import selectinload
-from modules.products.models import Product
+
 from modules.inventory.models import InventoryStock
+from modules.products.models import Product
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class ProductRepository:

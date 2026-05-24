@@ -1,14 +1,15 @@
 import json
 import logging
 from datetime import date as dt
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from modules.pl_engine.calculator import calculate, PLResult
-from modules.inventory.repository import InventoryRepository
-from modules.inventory.models import StockEntry
-from modules.finance.models import Asset
+
 from modules.products.models import Product
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from core.redis import cache_get, cache_set
+from modules.finance.models import Asset
+from modules.inventory.repository import InventoryRepository
+from modules.pl_engine.calculator import calculate
 
 logger = logging.getLogger("pl_engine")
 

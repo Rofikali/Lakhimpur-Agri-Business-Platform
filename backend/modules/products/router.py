@@ -3,12 +3,13 @@ from fastapi import APIRouter
 
 router = APIRouter()
 # routes added here as each module is builtimport uuid
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from core.dependencies import get_db_session, require_owner
+from modules.products.repository import ProductRepository
 from modules.products.schemas import ProductCreate, ProductUpdate
 from modules.products.service import ProductService
-from modules.products.repository import ProductRepository
-from core.dependencies import require_owner, get_db_session
 
 router = APIRouter(prefix="/api/products", tags=["products"])
 
