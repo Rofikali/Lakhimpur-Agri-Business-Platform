@@ -1,32 +1,4 @@
-# from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-# from core.config import settings
-
-# engine = create_async_engine(
-#     settings.DATABASE_URL,
-#     pool_size=settings.DATABASE_POOL_SIZE,
-#     max_overflow=settings.DATABASE_MAX_OVERFLOW,
-#     echo=settings.DEBUG,
-# )
-
-# AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
-
-
-# async def get_db():
-#     async with AsyncSessionLocal() as session:
-#         yield session
-
-
-# async def check_db():
-#     async with engine.connect() as conn:
-#         await conn.execute(text("SELECT 1"))
-
-
-# async def run_migrations():
-#     from alembic.config import Config
-#     from alembic import command
-
-#     cfg = Config("alembic.ini")
-#     command.upgrade(cfg, "head")
+# backend/core/database.py 
 
 from collections.abc import AsyncGenerator
 

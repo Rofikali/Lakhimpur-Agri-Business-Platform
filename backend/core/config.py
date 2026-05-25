@@ -1,18 +1,72 @@
+### core/config.py
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
+from functools import lru_cache
 
 
 class Settings(BaseSettings):
-    DATABASE_URL: str
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    DATABASE_POOL_SIZE: int = 20
+    ENVIRONMENT: str = "local"
+    DEBUG: bool = False
+    LOG_LEVEL: str = "INFO"
+
+    DATABASE_URL: str
+    DATABASE_POOL_SIZE: int = 5
     DATABASE_MAX_OVERFLOW: int = 10
 
-    DEBUG: bool = False
+    REDIS_URL: str
+    REDIS_PREFIX: str = "local"
 
-    model_config = SettingsConfigDict(
-        env_file=".env.local",
-        extra="ignore",
-    )
+    JWT_PRIVATE_KEY: str
+    JWT_PUBLIC_KEY: str
+    JWT_ALGORITHM: str = "RS256"
+    JWT_EXPIRY_HOURS: int = 24
+    JWT_REFRESH_DAYS: int = 7
+
+    OWNER_USERNAME: str = "admin"
+
+    RAZORPAY_KEY_ID: str
+    RAZORPAY_KEY_SECRET: str
+    RAZORPAY_WEBHOOK_SECRET: str
+    RAZORPAY_CURRENCY: str = "INR"
+
+    WATI_ENABLED: bool = False
+    WATI_API_TOKEN: str = ""
+    WATI_BASE_URL: str = ""
+    OWNER_WHATSAPP: str = ""
+
+    SENTRY_DSN: str = ""
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.0
+    SENTRY_ENVIRONMENT: str = "local"
+
+    CORS_ORIGIN: str = "http://localhost:3000"
+    API_BASE_URL: str = "http://localhost:8000"
+
+    R2_ENABLED: bool = False
+    R2_ACCOUNT_ID: str = ""
+    R2_ACCESS_KEY_ID: str = ""
+    R2_SECRET_ACCESS_KEY: str = ""
+    R2_BUCKET_NAME: str = "lakhimpur-dev"
+    R2_PUBLIC_URL: str = ""
+
+    RATE_LIMIT_PER_MIN: int = 100
+    RATE_LIMIT_LOGIN_PER_MIN: int = 5
+
+    @field_validator("JWT_PRIVATE_KEY", "JWT_PUBLIC_KEY")
+    @classmethod
+    def format_pem(cls, v):
+        return v.replace(r"\n", "\n")
+
+    @property
+    def is_production(self):
+        return self.ENVIRONMENT == "production"
 
 
-settings = Settings()
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
+
+
+settings = get_settings()

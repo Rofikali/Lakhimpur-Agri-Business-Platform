@@ -1,5 +1,6 @@
 # modules/orders/router.py  (and repeat for each of the 9 modules)
 from fastapi import APIRouter
+import uuid
 
 router = APIRouter()
 # routes added here as each module is builtimport uuid

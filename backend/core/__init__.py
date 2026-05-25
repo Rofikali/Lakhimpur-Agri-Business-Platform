@@ -1,5 +1,5 @@
 # core / middleware / __init__.py
-from .correlation import CorrelationMiddleware
-from .logging import RequestLoggingMiddleware
+from core.middleware.correlation import CorrelationMiddleware
+from core.middleware.logging import RequestLoggingMiddleware
 
 __all__ = ["CorrelationMiddleware", "RequestLoggingMiddleware"]

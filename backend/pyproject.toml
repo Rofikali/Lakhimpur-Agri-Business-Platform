@@ -45,6 +45,7 @@ dependencies = [
     "tenacity>=8.2.3",
     "greenlet>=3.0.3",
     "pytest>=9.0.3",
+    "psycopg2>=2.9.12",
 ]
 
 [dependency-groups]
