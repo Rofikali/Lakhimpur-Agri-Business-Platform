@@ -14,10 +14,10 @@ from Lakhimpur district, Assam. Built by a solo engineer.
 
 | Layer        | Technology                        |
 |---|---|
-| Backend      | FastAPI (Python 3.11), async      |
-| Frontend     | NuxtJS 3 (Vue 3 + TypeScript)     |
-| Database     | PostgreSQL 15 — NUMERIC(15,5)     |
-| Cache        | Redis 7                           |
+| Backend      | FastAPI (Python 3.14), async      |
+| Frontend     | NuxtJS 4.x (Vue latest + TypeScript)     |
+| Database     | PostgreSQL  — NUMERIC(15,5)     |
+| Cache        | Redis                            |
 | Payments     | Razorpay (UPI + cards)            |
 | Notify       | WATI (WhatsApp Business API)      |
 | Deploy       | Railway (backend) + Vercel (frontend) |
