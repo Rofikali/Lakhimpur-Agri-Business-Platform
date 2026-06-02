@@ -4,99 +4,114 @@
 
 SHELL := /bin/bash
 
-# -----------------------------------------------------------------------------
-# Config
-# -----------------------------------------------------------------------------
-
 ROOT_DIR := $(shell pwd)
 BACKEND  := $(ROOT_DIR)/backend
 FRONTEND := $(ROOT_DIR)/frontend
-
+COMPOSE  := docker compose
+HAS_DOCKER := $(shell docker info >/dev/null 2>&1 && echo 1 || echo 0)
 UV       := cd $(BACKEND) && uv run
-PG_DATA  := /var/lib/postgres/data
-
-export PYTHONPATH := $(BACKEND)
 
 .DEFAULT_GOAL := help
 
-# -----------------------------------------------------------------------------
-# Phony
-# -----------------------------------------------------------------------------
-
 .PHONY: \
-	up down restart \
+	up up-all down restart ps \
 	dev dev-be dev-fe \
 	install lock clean \
 	migrate rollback revision seed reset-db \
 	test test-unit test-fast test-cov test-pl \
 	lint format typecheck quality \
 	gen-keys shell shell-db \
-	logs-pg logs-redis \
+	logs logs-be logs-pg logs-redis \
 	health help
 
 # =============================================================================
 # SERVICES
 # =============================================================================
 
-up: ## Start PostgreSQL + Redis
-	@echo "Starting services..."
-
-	@sudo -u postgres pg_ctl status -D $(PG_DATA) > /dev/null 2>&1 \
-	|| sudo -u postgres pg_ctl start \
-		-D $(PG_DATA) \
-		-l /tmp/postgres.log \
-		-o "-k /tmp -p 5432" \
-		-w
-
-	@redis-cli ping > /dev/null 2>&1 \
-	|| redis-server \
-		--daemonize yes \
-		--bind 127.0.0.1 \
-		--logfile /tmp/redis.log
-
+up: ## Start backend services; Docker when available, Codespaces local otherwise
+	@if [ "$(HAS_DOCKER)" = "1" ]; then \
+		echo "Using Docker Compose"; \
+		$(COMPOSE) up -d db redis backend; \
+	else \
+		echo "Docker daemon unavailable; using Codespaces local services"; \
+		bash .devcontainer/start-services.sh; \
+	fi
 	@echo ""
-	@echo "✓ PostgreSQL + Redis running"
+	@echo "✓ Backend services ready"
+	@echo "  API:  http://localhost:8000  (run make dev-be if backend is not already running)"
+	@echo "  Docs: http://localhost:8000/docs"
+
+up-all: ## Start backend services and frontend stack
+	@if [ "$(HAS_DOCKER)" = "1" ]; then \
+		echo "Using Docker Compose"; \
+		$(COMPOSE) up -d; \
+	else \
+		echo "Docker daemon unavailable; using Codespaces local services"; \
+		bash .devcontainer/start-services.sh; \
+		echo "Run make dev-be and make dev-fe in separate terminals"; \
+	fi
 
 down: ## Stop services
-	@sudo -u postgres pg_ctl stop -D $(PG_DATA) > /dev/null 2>&1 || true
-	@pkill redis-server > /dev/null 2>&1 || true
-	@echo "✓ Services stopped"
+	@if [ "$(HAS_DOCKER)" = "1" ]; then \
+		$(COMPOSE) down; \
+	else \
+		su postgres -c "pg_ctl stop -D /var/lib/postgres/data" >/dev/null 2>&1 || true; \
+		pkill redis-server >/dev/null 2>&1 || true; \
+		echo "✓ Local services stopped"; \
+	fi
 
-restart: down up ## Restart services
+restart: down up ## Restart backend services
+
+ps: ## Show service status
+	@if [ "$(HAS_DOCKER)" = "1" ]; then \
+		$(COMPOSE) ps; \
+	else \
+		su postgres -c "pg_ctl status -D /var/lib/postgres/data" || true; \
+		redis-cli ping || true; \
+	fi
 
 # =============================================================================
 # DEVELOPMENT
 # =============================================================================
 
-dev: ## Run full stack
-	@echo "Run in separate terminals:"
-	@echo "make dev-be"
-	@echo "make dev-fe"
+dev: ## Show dev commands
+	@echo "Run one of:"
+	@echo "  make dev-be  # FastAPI"
+	@echo "  make dev-fe  # Nuxt frontend"
+	@echo "  make up      # DB + Redis first"
 
-dev-be: ## FastAPI backend
-	$(UV) uvicorn main:app \
-		--host 0.0.0.0 \
-		--port 8000 \
-		--reload \
-		--reload-dir modules \
-		--reload-dir shared \
-		--reload-dir core
+dev-be: ## FastAPI backend with hot reload
+	@if [ "$(HAS_DOCKER)" = "1" ]; then \
+		$(COMPOSE) up backend; \
+	else \
+		bash .devcontainer/start-services.sh; \
+		cd $(BACKEND) && uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload --reload-dir modules --reload-dir shared --reload-dir core; \
+	fi
 
-dev-fe: ## Nuxt frontend
-	cd $(FRONTEND) && pnpm run dev
+dev-fe: ## Nuxt frontend with hot reload
+	@if [ "$(HAS_DOCKER)" = "1" ]; then \
+		$(COMPOSE) up frontend; \
+	else \
+		cd $(FRONTEND) && pnpm run dev; \
+	fi
 
 # =============================================================================
 # INSTALLATION
 # =============================================================================
 
-install: ## Install dependencies
-	cd $(BACKEND) && uv sync --all-groups
-	cd $(FRONTEND) && pnpm install
+install: ## Install/build dependencies
+	@if [ "$(HAS_DOCKER)" = "1" ]; then \
+		$(COMPOSE) build backend; \
+		$(COMPOSE) build frontend; \
+	else \
+		cd $(BACKEND) && uv sync --all-groups; \
+		cd $(FRONTEND) && pnpm install; \
+	fi
 
-lock: ## Update lockfile
+lock: ## Update backend uv lockfile
 	cd $(BACKEND) && uv lock
 
-clean: ## Cleanup artifacts
+clean: ## Cleanup local Python artifacts
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	find . -type d -name ".pytest_cache" -exec rm -rf {} +
 	find . -type d -name ".mypy_cache" -exec rm -rf {} +
@@ -108,66 +123,101 @@ clean: ## Cleanup artifacts
 # =============================================================================
 
 migrate: ## Alembic upgrade
-	$(UV) alembic upgrade head
+	@if [ "$(HAS_DOCKER)" = "1" ]; then \
+		$(COMPOSE) run --rm backend alembic upgrade head; \
+	else \
+		bash .devcontainer/start-services.sh; \
+		cd $(BACKEND) && uv run alembic upgrade head; \
+	fi
 
 rollback: ## Alembic downgrade
-	$(UV) alembic downgrade -1
+	@if [ "$(HAS_DOCKER)" = "1" ]; then \
+		$(COMPOSE) run --rm backend alembic downgrade -1; \
+	else \
+		cd $(BACKEND) && uv run alembic downgrade -1; \
+	fi
 
 revision: ## New migration (MSG="...")
-	$(UV) alembic revision --autogenerate -m "$(MSG)"
+	@if [ "$(HAS_DOCKER)" = "1" ]; then \
+		$(COMPOSE) run --rm backend alembic revision --autogenerate -m "$(MSG)"; \
+	else \
+		cd $(BACKEND) && uv run alembic revision --autogenerate -m "$(MSG)"; \
+	fi
 
 seed: ## Seed database
-	$(UV) python scripts/seed.py
+	@if [ "$(HAS_DOCKER)" = "1" ]; then \
+		$(COMPOSE) run --rm backend python scripts/seed.py; \
+	else \
+		bash .devcontainer/start-services.sh; \
+		cd $(BACKEND) && uv run python scripts/seed.py; \
+	fi
 
-reset-db: ## Reset database
-	$(UV) alembic downgrade base
-	$(UV) alembic upgrade head
-	$(UV) python scripts/seed.py
+reset-db: ## Reset database schema and seed data
+	@if [ "$(HAS_DOCKER)" = "1" ]; then \
+		$(COMPOSE) run --rm backend alembic downgrade base; \
+		$(COMPOSE) run --rm backend alembic upgrade head; \
+		$(COMPOSE) run --rm backend python scripts/seed.py; \
+	else \
+		bash .devcontainer/start-services.sh; \
+		cd $(BACKEND) && uv run alembic downgrade base; \
+		cd $(BACKEND) && uv run alembic upgrade head; \
+		cd $(BACKEND) && uv run python scripts/seed.py; \
+	fi
 
 shell-db: ## PostgreSQL shell
-	psql -h /tmp -U postgres -d lakhimpur_dev
+	@if [ "$(HAS_DOCKER)" = "1" ]; then \
+		$(COMPOSE) exec db psql -U postgres -d lakhimpur_dev; \
+	else \
+		psql postgresql://postgres:devpassword@127.0.0.1:5432/lakhimpur_dev; \
+	fi
 
 # =============================================================================
 # TESTING
 # =============================================================================
 
-test: ## All tests
-	$(UV) pytest tests/ -v
+test: ## All backend tests
+	@if [ "$(HAS_DOCKER)" = "1" ]; then $(COMPOSE) run --rm backend pytest tests/ -v; else cd $(BACKEND) && uv run pytest tests/ -v; fi
 
-test-unit: ## Unit tests
-	$(UV) pytest tests/unit/ -v --tb=short
+test-unit: ## Backend unit tests
+	@if [ "$(HAS_DOCKER)" = "1" ]; then $(COMPOSE) run --rm backend pytest tests/unit/ -v --tb=short; else cd $(BACKEND) && uv run pytest tests/unit/ -v --tb=short; fi
 
-test-fast: ## Parallel tests
-	$(UV) pytest tests/ -n auto --tb=short
+test-fast: ## Backend parallel tests
+	@if [ "$(HAS_DOCKER)" = "1" ]; then $(COMPOSE) run --rm backend pytest tests/ -n auto --tb=short; else cd $(BACKEND) && uv run pytest tests/ -n auto --tb=short; fi
 
-test-cov: ## Coverage
-	$(UV) pytest tests/ \
-		--cov=. \
-		--cov-report=term-missing \
-		--cov-report=html:htmlcov \
-		--cov-fail-under=75
+test-cov: ## Backend coverage
+	@if [ "$(HAS_DOCKER)" = "1" ]; then \
+		$(COMPOSE) run --rm backend pytest tests/ --cov=. --cov-report=term-missing --cov-report=html:htmlcov --cov-fail-under=75; \
+	else \
+		cd $(BACKEND) && uv run pytest tests/ --cov=. --cov-report=term-missing --cov-report=html:htmlcov --cov-fail-under=75; \
+	fi
 
 test-pl: ## P&L engine coverage
-	$(UV) pytest tests/unit/test_pl_calculator.py \
-		--cov=modules/pl_engine/calculator.py \
-		--cov-fail-under=95
+	@if [ "$(HAS_DOCKER)" = "1" ]; then \
+		$(COMPOSE) run --rm backend pytest tests/unit/test_pl_calculator.py --cov=modules/pl_engine/calculator.py --cov-fail-under=95; \
+	else \
+		cd $(BACKEND) && uv run pytest tests/unit/test_pl_calculator.py --cov=modules/pl_engine/calculator.py --cov-fail-under=95; \
+	fi
 
 # =============================================================================
 # QUALITY
 # =============================================================================
 
 lint: ## Ruff lint
-	$(UV) ruff check .
+	@if [ "$(HAS_DOCKER)" = "1" ]; then $(COMPOSE) run --rm backend ruff check .; else cd $(BACKEND) && uv run ruff check .; fi
 
-format: ## Format code
-	$(UV) ruff check . --fix
-	$(UV) black .
+format: ## Format backend code
+	@if [ "$(HAS_DOCKER)" = "1" ]; then \
+		$(COMPOSE) run --rm backend ruff check . --fix; \
+		$(COMPOSE) run --rm backend black .; \
+	else \
+		cd $(BACKEND) && uv run ruff check . --fix; \
+		cd $(BACKEND) && uv run black .; \
+	fi
 
 typecheck: ## mypy type checking
-	cd $(BACKEND) && uv run mypy . \
-		--explicit-package-bases
+	@if [ "$(HAS_DOCKER)" = "1" ]; then $(COMPOSE) run --rm backend mypy . --explicit-package-bases; else cd $(BACKEND) && uv run mypy . --explicit-package-bases; fi
 
-quality: lint typecheck test ## Full quality gate
+quality: lint typecheck test ## Full backend quality gate
 
 # =============================================================================
 # UTILITIES
@@ -175,39 +225,35 @@ quality: lint typecheck test ## Full quality gate
 
 gen-keys: ## Generate JWT RSA keys
 	@openssl genrsa -out /tmp/jwt_priv.pem 2048 2>/dev/null
-	@openssl rsa -in /tmp/jwt_priv.pem \
-		-pubout \
-		-out /tmp/jwt_pub.pem 2>/dev/null
-
+	@openssl rsa -in /tmp/jwt_priv.pem -pubout -out /tmp/jwt_pub.pem 2>/dev/null
 	@echo ""
 	@echo "Add to backend/.env.local:"
 	@echo ""
-
 	@printf 'JWT_PRIVATE_KEY='
-	@awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}' \
-		/tmp/jwt_priv.pem
-
+	@awk 'NF {sub(/\r/, ""); printf "%s\\n",$$0;}' /tmp/jwt_priv.pem
 	@echo ""
-
 	@printf 'JWT_PUBLIC_KEY='
-	@awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}' \
-		/tmp/jwt_pub.pem
-
+	@awk 'NF {sub(/\r/, ""); printf "%s\\n",$$0;}' /tmp/jwt_pub.pem
 	@echo ""
-
 	@rm -f /tmp/jwt_priv.pem /tmp/jwt_pub.pem
 
-shell: ## IPython shell
-	$(UV) ipython
+shell: ## Backend shell
+	@if [ "$(HAS_DOCKER)" = "1" ]; then $(COMPOSE) run --rm backend ipython; else cd $(BACKEND) && uv run ipython; fi
 
-logs-pg: ## PostgreSQL logs
-	tail -f /tmp/postgres.log
+logs: logs-be ## Follow backend logs
 
-logs-redis: ## Redis logs
-	tail -f /tmp/redis.log
+logs-be: ## Follow FastAPI logs
+	@if [ "$(HAS_DOCKER)" = "1" ]; then $(COMPOSE) logs -f backend; else echo "FastAPI runs in your make dev-be terminal"; fi
 
-health: ## Backend health
+logs-pg: ## Follow PostgreSQL logs
+	@if [ "$(HAS_DOCKER)" = "1" ]; then $(COMPOSE) logs -f db; else tail -f /tmp/postgres.log; fi
+
+logs-redis: ## Follow Redis logs
+	@if [ "$(HAS_DOCKER)" = "1" ]; then $(COMPOSE) logs -f redis; else tail -f /tmp/redis.log; fi
+
+health: ## Backend health checks
 	curl -s http://localhost:8000/health | python -m json.tool
+	curl -s http://localhost:8000/health/ready | python -m json.tool
 
 # =============================================================================
 # HELP
@@ -216,135 +262,3 @@ health: ## Backend health
 help: ## Show commands
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 	awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-24s\033[0m %s\n", $$1, $$2}'
-
-# # ── Config ────────────────────────────────────────────────────────────────────
-# UV      := cd backend && uv run
-# PG_DATA := /var/lib/postgres/data
-
-# .PHONY: up down dev-be dev-fe migrate rollback seed reset-db \
-#         gen-keys install test test-unit test-cov test-pl \
-#         lint format typecheck shell help
-
-# # ── Services ──────────────────────────────────────────────────────────────────
-# up:                                            ## Start PostgreSQL + Redis
-# 	@sudo -u postgres pg_ctl status -D $(PG_DATA) > /dev/null 2>&1 \
-# 	  || sudo -u postgres pg_ctl start -D $(PG_DATA) \
-# 	       -l /var/log/postgresql.log -o "-p 5432" -w
-# 	@redis-cli ping > /dev/null 2>&1 \
-# 	  || redis-server --daemonize yes --bind 127.0.0.1 \
-# 	       --logfile /var/log/redis.log
-# 	@echo "✓ PostgreSQL + Redis running"
-# 	@echo ""
-# 	@echo "Now run in two terminals:"
-# 	@echo "  Terminal 1: make dev-be"
-# 	@echo "  Terminal 2: make dev-fe"
-
-# down:                                          ## Stop all services
-# 	@sudo -u postgres pg_ctl stop -D $(PG_DATA) 2>/dev/null || true
-# 	@pkill redis-server 2>/dev/null || true
-# 	@echo "✓ Services stopped"
-
-# # ── Dev servers ───────────────────────────────────────────────────────────────
-# dev-be:                                        ## Run backend (hot reload)
-# 	$(UV) uvicorn main:app \
-# 	  --host 0.0.0.0 --port 8000 --reload \
-# 	  --reload-dir modules --reload-dir core --reload-dir shared
-
-# dev-fe:                                        ## Run frontend (hot reload)
-# 	cd frontend && pnpm run dev
-
-# # ── Keys ──────────────────────────────────────────────────────────────────────
-# gen-keys:                                      ## Generate RSA JWT keys → print for .env.local
-# 	@openssl genrsa -out /tmp/jwt_priv.pem 2048 2>/dev/null
-# 	@openssl rsa -in /tmp/jwt_priv.pem -pubout -out /tmp/jwt_pub.pem 2>/dev/null
-# 	@echo ""
-# 	@echo "Add these to backend/.env.local:"
-# 	@echo ""
-# 	@printf 'JWT_PRIVATE_KEY='
-# 	@awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}' /tmp/jwt_priv.pem
-# 	@echo ""
-# 	@printf 'JWT_PUBLIC_KEY='
-# 	@awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}' /tmp/jwt_pub.pem
-# 	@echo ""
-# 	@rm /tmp/jwt_priv.pem /tmp/jwt_pub.pem
-# 	@echo "(keys deleted from /tmp)"
-
-# # ── Install ───────────────────────────────────────────────────────────────────
-# install:                                       ## Sync all deps (uv + npm)
-# 	cd backend  && uv sync --all-groups
-# 	cd frontend && npm install
-
-# lock:                                          ## Update uv.lock
-# 	cd backend && uv lock
-
-# # ── Database ──────────────────────────────────────────────────────────────────
-# migrate:                                       ## Run Alembic migrations (head)
-# 	$(UV) alembic upgrade head
-
-# rollback:                                      ## Roll back one migration
-# 	$(UV) alembic downgrade -1
-
-# generate-migration:                            ## New migration — MSG=required
-# 	$(UV) alembic revision --autogenerate -m "$(MSG)"
-
-# seed:                                          ## Seed DB (owner + 5 products)
-# 	$(UV) python scripts/seed.py
-
-# reset-db:                                      ## ⚠ Wipe + remigrate + reseed
-# 	$(UV) alembic downgrade base
-# 	$(UV) alembic upgrade head
-# 	$(UV) python scripts/seed.py
-
-# shell-db:                                      ## PostgreSQL shell
-# 	psql -U postgres -d lakhimpur_dev
-
-# # ── Tests ─────────────────────────────────────────────────────────────────────
-# test:                                          ## All tests
-# 	$(UV) pytest tests/ -v
-
-# test-unit:                                     ## Unit tests only (fast, no DB)
-# 	$(UV) pytest tests/unit/ -v --tb=short
-
-# test-cov:                                      ## Tests + coverage (must hit 75%)
-# 	$(UV) pytest tests/ \
-# 	  --cov=. --cov-report=term-missing \
-# 	  --cov-report=html:htmlcov \
-# 	  --cov-fail-under=75 -v
-
-# test-pl:                                       ## P&L engine only (must hit 95%)
-# 	$(UV) pytest tests/unit/test_pl_calculator.py \
-# 	  --cov=modules/pl_engine/calculator.py \
-# 	  --cov-fail-under=95 -v
-
-# test-fast:                                     ## Parallel test run (fastest)
-# 	$(UV) pytest tests/ -n auto --tb=short
-
-# # ── Code quality ──────────────────────────────────────────────────────────────
-# lint:                                          ## ruff + black check
-# 	$(UV) ruff check .
-# 	$(UV) black --check .
-
-# format:                                        ## Auto-fix formatting
-# 	$(UV) ruff check --fix .
-# 	$(UV) black .
-
-# typecheck:                                     ## mypy type check
-# 	$(UV) mypy modules/ core/ shared/ --ignore-missing-imports
-
-# # ── Dev utilities ─────────────────────────────────────────────────────────────
-# shell:                                         ## IPython REPL in project env
-# 	$(UV) ipython
-
-# logs-pg:                                       ## Tail PostgreSQL logs
-# 	tail -f /var/log/postgresql.log
-
-# logs-redis:                                    ## Tail Redis logs
-# 	tail -f /var/log/redis.log
-
-# health:                                        ## Check backend health
-# 	curl -s http://localhost:8000/health | python -m json.tool
-# 	curl -s http://localhost:8000/health/ready | python -m json.tool
-
-# help:                                          ## Show all commands
-# 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
-# 	  awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2}'

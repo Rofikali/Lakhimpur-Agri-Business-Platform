@@ -1,12 +1,23 @@
 ### core/config.py
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import field_validator
 from functools import lru_cache
+from pathlib import Path
+from typing import Any
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_BACKEND_DIR = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=(
+            str(_BACKEND_DIR / ".env"),
+            str(_BACKEND_DIR / ".env.local"),
+        ),
+        extra="ignore",
+    )
 
     ENVIRONMENT: str = "local"
     DEBUG: bool = False
@@ -56,11 +67,24 @@ class Settings(BaseSettings):
 
     @field_validator("JWT_PRIVATE_KEY", "JWT_PUBLIC_KEY")
     @classmethod
-    def format_pem(cls, v):
+    def format_pem(cls, v: str) -> str:
         return v.replace(r"\n", "\n")
 
+    @field_validator("DEBUG", mode="before")
+    @classmethod
+    def parse_debug(cls, v: Any) -> bool:
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            value = v.strip().lower()
+            if value in {"1", "true", "yes", "on", "debug", "development", "dev"}:
+                return True
+            if value in {"0", "false", "no", "off", "release", "production", "prod"}:
+                return False
+        return bool(v)
+
     @property
-    def is_production(self):
+    def is_production(self) -> bool:
         return self.ENVIRONMENT == "production"
 
 

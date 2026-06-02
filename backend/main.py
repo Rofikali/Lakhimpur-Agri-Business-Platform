@@ -5,20 +5,19 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from core.config import settings
 
 # from core.middleware import CorrelationMiddleware, RequestLoggingMiddleware
-
 from core import CorrelationMiddleware, RequestLoggingMiddleware
+from core.config import settings
 from modules.auth.router import router as auth_router
-from modules.products.router import router as products_router
+from modules.farm.router import router as farm_router
 from modules.inventory.router import router as inventory_router
+from modules.notify.router import router as notify_router
 from modules.orders.router import router as orders_router
 from modules.payments.router import router as payments_router
-from modules.pl_engine.router import router as pl_router
-from modules.farm.router import router as farm_router
 from modules.petha.router import router as petha_router
-from modules.notify.router import router as notify_router
+from modules.pl_engine.router import router as pl_router
+from modules.products.router import router as products_router
 
 if settings.SENTRY_DSN:
     sentry_sdk.init(

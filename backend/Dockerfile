@@ -3,6 +3,8 @@
 FROM ghcr.io/astral-sh/uv:python3.12-alpine AS base
 
 WORKDIR /app
+
+RUN apk add --no-cache gcc musl-dev postgresql-dev
 # Compile bytecode + use copy mode (better for containers)
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \

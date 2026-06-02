@@ -1,12 +1,15 @@
 ### farm/models.py
-from sqlalchemy.orm import Mapped, mapped_column
-from shared.models.base import Base, TimestampMixin, MONEY, QTY
-from sqlalchemy import String, Enum as SAEnum, Date, ForeignKey, Text, UniqueConstraint
-import enum, uuid
-from decimal import Decimal
+import enum
+import uuid
 from datetime import date, datetime
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from decimal import Decimal
+
+from sqlalchemy import Date, ForeignKey, String, Text
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from shared.models.base import MONEY, QTY, Base, TimestampMixin
 
 
 class FarmVariety(str, enum.Enum):
@@ -26,9 +29,9 @@ class SeasonStatus(str, enum.Enum):
 
 class FarmSeason(Base, TimestampMixin):
     __tablename__ = "farm_seasons"
-    variety: Mapped[str] = mapped_column(SAEnum(FarmVariety))
+    variety: Mapped[str] = mapped_column(SAEnum(FarmVariety, name="farm_variety"))
     area_bigha: Mapped[Decimal] = mapped_column(QTY)
-    status: Mapped[str] = mapped_column(SAEnum(SeasonStatus), default="planning")
+    status: Mapped[str] = mapped_column(SAEnum(SeasonStatus, name="farm_season_status"), default="planning")
     start_date: Mapped[date] = mapped_column(Date)
     harvest_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     dhan_qty_kg: Mapped[Decimal | None] = mapped_column(QTY, nullable=True)
@@ -48,7 +51,7 @@ class FarmInput(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     season_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("farm_seasons.id"))
     input_type: Mapped[str] = mapped_column(
-        SAEnum("seed", "fertilizer", "pesticide", "labor", "irrigation", "transport", "other")
+        SAEnum("seed", "fertilizer", "pesticide", "labor", "irrigation", "transport", "other", name="farm_input_type")
     )
     description: Mapped[str] = mapped_column(Text)
     qty: Mapped[Decimal | None] = mapped_column(QTY, nullable=True)

@@ -55,6 +55,7 @@ class OrderItem(Base):
     total: Mapped[Decimal] = mapped_column(MONEY, nullable=False)
     source: Mapped[str] = mapped_column(String(20), default="own")
     order = relationship("Order", back_populates="items")
+    product = relationship("Product", back_populates="order_items")
 
 
 class Payment(Base):

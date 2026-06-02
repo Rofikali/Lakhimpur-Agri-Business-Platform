@@ -1,12 +1,16 @@
 ### inventory/models.py
 
-import enum, uuid
-from decimal import Decimal
+import enum
+import uuid
 from datetime import date, datetime
-from sqlalchemy import String, Enum as SAEnum, Date, ForeignKey, Text, UniqueConstraint
+from decimal import Decimal
+
+from sqlalchemy import Date, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import mapped_column, Mapped, relationship
-from shared.models.base import Base, TimestampMixin, MONEY, QTY
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from shared.models.base import MONEY, QTY, Base, TimestampMixin
 
 
 class EntryType(str, enum.Enum):
@@ -28,15 +32,15 @@ class StockEntry(Base, TimestampMixin):
 
     idempotency_key: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), unique=True)
     product_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("products.id"))
-    entry_type: Mapped[str] = mapped_column(SAEnum(EntryType))
+    entry_type: Mapped[str] = mapped_column(SAEnum(EntryType, name="stock_entry_type"))
     qty: Mapped[Decimal] = mapped_column(QTY)
     unit_cost: Mapped[Decimal | None] = mapped_column(MONEY, nullable=True)
     total_amount: Mapped[Decimal] = mapped_column(MONEY)
     standard_unit_cost: Mapped[Decimal | None] = mapped_column(MONEY, nullable=True)
     price_variance: Mapped[Decimal | None] = mapped_column(MONEY, nullable=True)
     cost_variance: Mapped[Decimal | None] = mapped_column(MONEY, nullable=True)
-    source: Mapped[str | None] = mapped_column(SAEnum("own", "external", "internal"), nullable=True)
-    channel: Mapped[str | None] = mapped_column(SAEnum("online", "offline"), nullable=True)
+    source: Mapped[str | None] = mapped_column(SAEnum("own", "external", "internal", name="stock_entry_source"), nullable=True)
+    channel: Mapped[str | None] = mapped_column(SAEnum("online", "offline", name="stock_entry_channel"), nullable=True)
     pay_mode: Mapped[str | None] = mapped_column(nullable=True)
     reference_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     reference_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
@@ -64,7 +68,7 @@ class MonthlyStock(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     product_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("products.id"))
     month: Mapped[str] = mapped_column(String(7))  # "2025-05"
-    stock_type: Mapped[str] = mapped_column(SAEnum("opening", "closing"))
+    stock_type: Mapped[str] = mapped_column(SAEnum("opening", "closing", name="monthly_stock_type"))
     qty: Mapped[Decimal] = mapped_column(QTY)
     value: Mapped[Decimal] = mapped_column(MONEY)
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.utcnow())

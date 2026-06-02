@@ -4,10 +4,8 @@
 import asyncio
 from decimal import Decimal
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from passlib.context import CryptContext
 from core.config import settings
-
-pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from core.security import hash_password
 
 DEFAULT_PRODUCTS = [
     {
@@ -75,8 +73,13 @@ DEFAULT_PRODUCTS = [
 async def seed():
     from shared.models.base import Base
     from modules.auth.models import Owner
+    from modules.farm.models import FarmInput, FarmMilling, FarmSeason  # noqa: F401
+    from modules.finance.models import Asset, FixedCost  # noqa: F401
+    from modules.inventory.models import InventoryStock, MonthlyStock, StockEntry  # noqa: F401
+    from modules.notify.models import Notification  # noqa: F401
+    from modules.orders.models import Order, OrderItem, Payment  # noqa: F401
+    from modules.petha.models import PethaBatch, PethaBatchCost  # noqa: F401
     from modules.products.models import Product
-    from modules.inventory.models import InventoryStock
 
     engine = create_async_engine(settings.DATABASE_URL)
     async with engine.begin() as conn:
@@ -85,7 +88,7 @@ async def seed():
         db.add(
             Owner(
                 username=settings.OWNER_USERNAME,
-                password_hash=pwd_ctx.hash("changeme123"),
+                password_hash=hash_password("changeme123"),
             )
         )
         for p in DEFAULT_PRODUCTS:

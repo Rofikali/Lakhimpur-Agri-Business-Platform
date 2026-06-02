@@ -1,7 +1,11 @@
 # backend/core/database.py 
 
+import asyncio
 from collections.abc import AsyncGenerator
+from pathlib import Path
 
+from alembic import command
+from alembic.config import Config
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -43,3 +47,9 @@ async def check_db() -> bool:
 
 async def close_db():
     await engine.dispose()
+
+
+async def run_migrations() -> None:
+    """Run Alembic migrations without blocking the FastAPI event loop."""
+    alembic_cfg = Config(str(Path(__file__).resolve().parent.parent / "alembic.ini"))
+    await asyncio.to_thread(command.upgrade, alembic_cfg, "head")

@@ -1,13 +1,15 @@
 ### petha/models.py
-from sqlalchemy.orm import Mapped, mapped_column
-from shared.models.base import Base, TimestampMixin, MONEY, QTY
-from sqlalchemy import String, Enum as SAEnum, Date, ForeignKey, Text, UniqueConstraint, Integer
-import enum, uuid
-from decimal import Decimal
+import enum
+import uuid
 from datetime import date, datetime
+from decimal import Decimal
+
+from sqlalchemy import Date, ForeignKey, Integer, Text
+from sqlalchemy import Enum as SAEnum
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.dialects.postgresql import JSONB
+
+from shared.models.base import MONEY, QTY, Base, TimestampMixin
 
 
 class PethaVariety(str, enum.Enum):
@@ -23,8 +25,8 @@ class BatchStatus(str, enum.Enum):
 
 class PethaBatch(Base, TimestampMixin):
     __tablename__ = "petha_batches"
-    variety: Mapped[str] = mapped_column(SAEnum(PethaVariety))
-    status: Mapped[str] = mapped_column(SAEnum(BatchStatus), default="in_production")
+    variety: Mapped[str] = mapped_column(SAEnum(PethaVariety, name="petha_variety"))
+    status: Mapped[str] = mapped_column(SAEnum(BatchStatus, name="petha_batch_status"), default="in_production")
     batch_date: Mapped[date] = mapped_column(Date)
     planned_pieces: Mapped[int] = mapped_column(Integer)
     good_pieces: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -46,7 +48,7 @@ class PethaBatchCost(Base):
     __tablename__ = "petha_batch_costs"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     batch_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("petha_batches.id"))
-    cost_type: Mapped[str] = mapped_column(SAEnum("ingredient", "labor", "fuel", "overhead"))
+    cost_type: Mapped[str] = mapped_column(SAEnum("ingredient", "labor", "fuel", "overhead", name="petha_cost_type"))
     description: Mapped[str] = mapped_column(Text)
     qty: Mapped[Decimal | None] = mapped_column(QTY, nullable=True)
     unit_cost: Mapped[Decimal] = mapped_column(MONEY)
