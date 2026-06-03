@@ -24,7 +24,7 @@ def _svc(db: AsyncSession = Depends(get_db_session)) -> OrderService:
         inventory=InventoryService(
             repo=InventoryRepository(db), product_repo=ProductRepository(db)
         ),
-        payments=PaymentService(),
+        payments=PaymentService(db),
         notify=NotifyService(),
     )
 

@@ -1,13 +1,9 @@
-# modules/orders/router.py  (and repeat for each of the 9 modules)
-from fastapi import APIRouter
 import uuid
 
-router = APIRouter()
-# routes added here as each module is builtimport uuid
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.dependencies import get_db_session, require_owner
+from core.dependencies import get_db_session, optional_owner, require_owner
 from modules.products.repository import ProductRepository
 from modules.products.schemas import ProductCreate, ProductUpdate
 from modules.products.service import ProductService
@@ -22,7 +18,7 @@ def _svc(db: AsyncSession = Depends(get_db_session)) -> ProductService:
 @router.get("/")
 async def list_products(
     service: ProductService = Depends(_svc),
-    owner: dict | None = Depends(require_owner),
+    owner: dict | None = Depends(optional_owner),
 ):
     """Owner sees all (inc inactive). Public sees active only."""
     return await service.list_products(owner=owner is not None)

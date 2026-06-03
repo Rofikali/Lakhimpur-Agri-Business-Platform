@@ -88,7 +88,7 @@ class OrderService:
             order.razorpay_order_id = rzp["id"]
             await self.repo.save(order)
             # Payment record
-            await self.payments.create_payment_record(
+            order.payment = await self.payments.create_payment_record(
                 order_id=order.id,
                 mode="razorpay",
                 amount=total,
@@ -99,7 +99,7 @@ class OrderService:
         else:
             await self._confirm_and_decrement(order, bg)
             credit_due = data.credit_due_date if data.payment_mode == "credit" else None
-            await self.payments.create_payment_record(
+            order.payment = await self.payments.create_payment_record(
                 order_id=order.id,
                 mode=data.payment_mode,
                 amount=total,
@@ -107,6 +107,7 @@ class OrderService:
                 status="outstanding" if data.payment_mode == "credit" else "paid",
             )
 
+        order = await self.repo.get(order.id) or order
         return self.repo.to_dict(order)
 
     async def confirm_from_webhook(

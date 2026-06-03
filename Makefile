@@ -15,7 +15,8 @@ UV       := cd $(BACKEND) && uv run
 
 .PHONY: \
 	up up-all down restart ps \
-	dev dev-be dev-fe \
+	dev dev-be dev-fe preview-fe \
+	fe-lint fe-typecheck fe-build fe-check \
 	install lock clean \
 	migrate rollback revision seed reset-db \
 	test test-unit test-fast test-cov test-pl \
@@ -92,8 +93,22 @@ dev-fe: ## Nuxt frontend with hot reload
 	@if [ "$(HAS_DOCKER)" = "1" ]; then \
 		$(COMPOSE) up frontend; \
 	else \
-		cd $(FRONTEND) && pnpm run dev; \
+		cd $(FRONTEND) && pnpm run dev --no-fork --host 0.0.0.0 --port 3000; \
 	fi
+
+preview-fe: ## Preview built Nuxt frontend
+	cd $(FRONTEND) && pnpm run preview --host 0.0.0.0 --port 3000
+
+fe-lint: ## Frontend ESLint
+	cd $(FRONTEND) && pnpm run lint
+
+fe-typecheck: ## Frontend typecheck
+	cd $(FRONTEND) && pnpm run typecheck
+
+fe-build: ## Frontend production build
+	cd $(FRONTEND) && pnpm run build
+
+fe-check: fe-lint fe-typecheck fe-build ## Full frontend quality gate
 
 # =============================================================================
 # INSTALLATION

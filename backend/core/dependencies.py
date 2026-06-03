@@ -118,7 +118,6 @@ from core.redis import is_token_blocked
 from core.security import decode_token, get_token_from_request
 from shared.exceptions import AppException
 
-
 # ── Auth dependency ───────────────────────────────────────────────────────────
 
 
@@ -137,6 +136,19 @@ async def require_owner(request: Request) -> dict:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"error": "TOKEN_BLOCKLISTED", "message": "Session expired"},
         )
+    return payload
+
+
+async def optional_owner(request: Request) -> dict | None:
+    """Return owner JWT payload when present; allow anonymous public requests."""
+    token = get_token_from_request(request)
+    if not token:
+        return None
+
+    payload = decode_token(token)
+    jti = payload.get("jti", "")
+    if jti and await is_token_blocked(jti):
+        return None
     return payload
 
 
@@ -202,14 +214,14 @@ async def get_inventory_service(db: AsyncSession = Depends(get_db_session)):
 
 
 async def get_order_service(db: AsyncSession = Depends(get_db_session)):
-    from modules.orders.repository import OrderRepository
-    from modules.orders.service import OrderService
-    from modules.products.repository import ProductRepository
-    from modules.products.service import ProductService
     from modules.inventory.repository import InventoryRepository
     from modules.inventory.service import InventoryService
-    from modules.payments.service import PaymentService
     from modules.notify.service import NotifyService
+    from modules.orders.repository import OrderRepository
+    from modules.orders.service import OrderService
+    from modules.payments.service import PaymentService
+    from modules.products.repository import ProductRepository
+    from modules.products.service import ProductService
 
     return OrderService(
         repo=OrderRepository(db),

@@ -30,7 +30,7 @@ class StockEntryCreate(BaseModel):
         if v is None:
             return None
         if isinstance(v, float):
-            raise ValueError("Never use float for money or quantity")
+            raise ValueError("never float for money or quantity")
         return Decimal(str(v))
 
 
@@ -72,7 +72,7 @@ class MonthlyStockCreate(BaseModel):
     @classmethod
     def no_float(cls, v: Any) -> Decimal:
         if isinstance(v, float):
-            raise ValueError("Never use float")
+            raise ValueError("never float")
         return Decimal(str(v))
 
 
