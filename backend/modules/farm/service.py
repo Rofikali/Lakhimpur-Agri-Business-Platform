@@ -2,7 +2,6 @@ import uuid
 from decimal import Decimal
 
 from modules.farm.models import FarmSeason
-
 from modules.farm.repository import FarmRepository
 from modules.farm.schemas import FarmInputCreate, HarvestRecord, MillingRecord, SeasonCreate
 from modules.inventory.schemas import StockEntryCreate
@@ -10,6 +9,7 @@ from modules.inventory.service import InventoryService
 from shared.exceptions import InvalidSeasonTransitionError, SeasonNotFoundError
 
 MARKUP = Decimal("0.12")  # 12% transfer price markup: farm → brand
+DP5 = Decimal("0.00000")
 
 VALID_TRANSITIONS = {
     "planning": ["active"],
@@ -50,7 +50,7 @@ class FarmService:
                 "id": str(i.id),
                 "input_type": i.input_type,
                 "description": i.description,
-                "total_amount": str(i.total_amount),
+                "total_amount": self._decimal(i.total_amount),
                 "date": i.date.isoformat(),
             }
             for i in (s.inputs or [])
@@ -61,8 +61,9 @@ class FarmService:
         s = await self.repo.get_season(season_id)
         if not s:
             raise SeasonNotFoundError()
-        if s.status not in ("active", "planning"):
-            raise InvalidSeasonTransitionError(s.status, "add_input")
+        status = self._status(s.status)
+        if status not in ("active", "planning"):
+            raise InvalidSeasonTransitionError(status, "add_input")
 
         fi = await self.repo.add_input(
             season_id=season_id,
@@ -82,16 +83,17 @@ class FarmService:
         return {
             "id": str(fi.id),
             "input_type": fi.input_type,
-            "total_amount": str(fi.total_amount),
-            "season_total_cost": str(s.total_cultivation_cost),
+            "total_amount": self._decimal(fi.total_amount),
+            "season_total_cost": self._decimal(s.total_cultivation_cost),
         }
 
     async def record_harvest(self, season_id: uuid.UUID, data: HarvestRecord) -> dict:
         s = await self.repo.get_season(season_id)
         if not s:
             raise SeasonNotFoundError()
-        if s.status != "active":
-            raise InvalidSeasonTransitionError(s.status, "harvest")
+        status = self._status(s.status)
+        if status != "active":
+            raise InvalidSeasonTransitionError(status, "harvest")
 
         s.dhan_qty_kg = data.dhan_qty_kg
         s.harvest_date = data.harvest_date
@@ -108,8 +110,9 @@ class FarmService:
         s = await self.repo.get_season(season_id)
         if not s:
             raise SeasonNotFoundError()
-        if s.status != "harvested":
-            raise InvalidSeasonTransitionError(s.status, "milling")
+        status = self._status(s.status)
+        if status != "harvested":
+            raise InvalidSeasonTransitionError(status, "milling")
 
         # ── Milling yield ──────────────────────────────────────────────────
         yield_pct = (
@@ -166,7 +169,7 @@ class FarmService:
                 "joha": "joha-rice",
                 "bora_saul": "bora-saul",
                 "kali_jeera": "kali-jeera",
-            }.get(s.variety, "")
+            }.get(self._status(s.variety), "")
             product = await prod_repo.get_by_slug(variety_slug)
             if product:
                 await self.inventory.add_stock_entry(
@@ -188,17 +191,18 @@ class FarmService:
         await self.repo.save(s)
         return {
             **self._season_dict(s),
-            "milling_yield_pct": str(yield_pct.quantize(Decimal("0.00001"))),
-            "byproduct_revenue": str(byproduct.quantize(Decimal("0.00001"))),
-            "inventory_added_qty": str(data.chawl_received_kg),
+            "milling_yield_pct": self._decimal(yield_pct),
+            "byproduct_revenue": self._decimal(byproduct),
+            "inventory_added_qty": self._decimal(data.chawl_received_kg),
         }
 
     async def complete_season(self, season_id: uuid.UUID) -> dict:
         s = await self.repo.get_season(season_id)
         if not s:
             raise SeasonNotFoundError()
-        if s.status != "milled":
-            raise InvalidSeasonTransitionError(s.status, "complete")
+        status = self._status(s.status)
+        if status != "milled":
+            raise InvalidSeasonTransitionError(status, "complete")
         s.status = "complete"
         await self.repo.save(s)
         return self._season_dict(s)
@@ -213,22 +217,27 @@ class FarmService:
         return self._season_dict(s)
 
     @staticmethod
-    def _season_dict(s: FarmSeason) -> dict:
-        def _s(v):
-            return str(v) if v is not None else None
+    def _status(value) -> str:
+        return getattr(value, "value", value)
 
+    @staticmethod
+    def _decimal(value) -> str | None:
+        return str(value.quantize(DP5)) if value is not None else None
+
+    @staticmethod
+    def _season_dict(s: FarmSeason) -> dict:
         return {
             "id": str(s.id),
-            "variety": s.variety,
-            "area_bigha": _s(s.area_bigha),
-            "status": s.status,
+            "variety": FarmService._status(s.variety),
+            "area_bigha": FarmService._decimal(s.area_bigha),
+            "status": FarmService._status(s.status),
             "start_date": s.start_date.isoformat(),
             "harvest_date": s.harvest_date.isoformat() if s.harvest_date else None,
-            "dhan_qty_kg": _s(s.dhan_qty_kg),
-            "chawl_qty_kg": _s(s.chawl_qty_kg),
-            "total_cultivation_cost": _s(s.total_cultivation_cost),
-            "milling_yield_percent": _s(s.milling_yield_percent),
-            "cost_per_kg_dhan": _s(s.cost_per_kg_dhan),
-            "cost_per_kg_chawl": _s(s.cost_per_kg_chawl),
-            "transfer_price_per_kg": _s(s.transfer_price_per_kg),
+            "dhan_qty_kg": FarmService._decimal(s.dhan_qty_kg),
+            "chawl_qty_kg": FarmService._decimal(s.chawl_qty_kg),
+            "total_cultivation_cost": FarmService._decimal(s.total_cultivation_cost),
+            "milling_yield_percent": FarmService._decimal(s.milling_yield_percent),
+            "cost_per_kg_dhan": FarmService._decimal(s.cost_per_kg_dhan),
+            "cost_per_kg_chawl": FarmService._decimal(s.cost_per_kg_chawl),
+            "transfer_price_per_kg": FarmService._decimal(s.transfer_price_per_kg),
         }

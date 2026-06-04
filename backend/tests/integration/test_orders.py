@@ -1,5 +1,10 @@
+import json
+import re
 import uuid
+from datetime import date
 from decimal import Decimal
+
+from tests.conftest import make_webhook_payload
 
 
 def order_payload(
@@ -18,7 +23,7 @@ def order_payload(
 
 class TestOrderCreate:
     async def test_offline_order_immediately_confirmed(self, auth_client, joha_product, mock_wati):
-        product, stock = joha_product
+        product, _ = joha_product
         resp = await auth_client.post("/api/orders/", json=order_payload(str(product.id)))
         assert resp.status_code == 201
         assert resp.json()["status"] == "confirmed"
@@ -68,14 +73,12 @@ class TestOrderCreate:
         resp = await auth_client.post("/api/orders/", json=order_payload(str(product.id)))
         assert resp.status_code == 201
         order_number = resp.json()["order_number"]
-        import re
-
         assert re.match(r"LKP-\d{4}-\d{4}", order_number)
 
     async def test_idempotency_prevents_duplicate_orders(
         self, auth_client, joha_product, mock_wati
     ):
-        product, stock = joha_product
+        product, _ = joha_product
         idem_key = str(uuid.uuid4())
         payload = order_payload(str(product.id))
         payload["idempotency_key"] = idem_key
@@ -87,7 +90,7 @@ class TestOrderCreate:
         assert r1.json()["id"] == r2.json()["id"]  # same order returned
 
     async def test_oversell_rejected(self, auth_client, joha_product):
-        product, stock = joha_product
+        product, _ = joha_product
         # Try to order more than available (stock = 50 kg)
         resp = await auth_client.post(
             "/api/orders/",
@@ -135,15 +138,6 @@ class TestOrderStatusUpdate:
             },
         )
 
-
-
-
-
-
-
-
-
-        
         assert resp.status_code == 422
         assert resp.json()["error"] == "ORDER_INVALID_STATUS_TRANSITION"
 
@@ -183,24 +177,11 @@ class TestOrderStatusUpdate:
 ## tests/integration/test_payments.py
 
 
-
-
-
-
-
-
-
-import json
-
-from conftest import make_webhook_payload
-
-
 class TestWebhook:
     async def test_valid_webhook_confirms_order(
         self, auth_client, joha_product, mock_razorpay, mock_wati
     ):
-        product, stock = joha_product
-        initial_qty = stock.current_qty
+        product, _ = joha_product
 
         # Create online order
         order_resp = await auth_client.post(
@@ -338,8 +319,6 @@ class TestOutstandingCredits:
 
 ## tests/integration/test_pl_api.py
 
-from datetime import date
-
 
 class TestPLMonthly:
     async def test_pl_endpoint_returns_all_fields(self, auth_client):
@@ -409,7 +388,7 @@ class TestPLMonthly:
     async def test_past_month_served_from_cache(self, auth_client):
         """Past month: second call should have from_cache=True."""
         month = "2025-01"  # clearly in the past
-        r1 = await auth_client.get(f"/api/pl/monthly?month={month}")
+        await auth_client.get(f"/api/pl/monthly?month={month}")
         # First call may or may not be cached
         r2 = await auth_client.get(f"/api/pl/monthly?month={month}")
         assert r2.status_code == 200

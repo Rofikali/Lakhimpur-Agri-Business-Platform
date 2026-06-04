@@ -11,16 +11,18 @@ from decimal import Decimal
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from modules.inventory.models import InventoryStock
-from modules.products.models import Product
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from core.config import settings
 from core.database import get_db
+from core.dependencies import get_db_session
+from core.redis import get_redis
 from core.security import hash_password
 from main import app
 from modules.auth.models import Owner
 from modules.finance.models import Asset, FixedCost
+from modules.inventory.models import InventoryStock
+from modules.products.models import Product
 from shared.models.base import Base
 
 TEST_DB = os.getenv(
@@ -63,19 +65,29 @@ async def db(test_engine) -> AsyncSession:
     await conn.close()
 
 
+async def _clear_webhook_idempotency() -> None:
+    redis = await get_redis()
+    keys = [key async for key in redis.scan_iter(f"{settings.REDIS_PREFIX}:webhook:rzp:*")]
+    if keys:
+        await redis.delete(*keys)
+
+
 # ── FastAPI test client with DB override ──────────────────────────────────────
 @pytest.fixture
 async def client(db) -> AsyncClient:
     async def _override():
         yield db
 
+    await _clear_webhook_idempotency()
     app.dependency_overrides[get_db] = _override
+    app.dependency_overrides[get_db_session] = _override
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
     ) as c:
         yield c
     app.dependency_overrides.clear()
+    await _clear_webhook_idempotency()
 
 
 # ── Owner fixture ─────────────────────────────────────────────────────────────

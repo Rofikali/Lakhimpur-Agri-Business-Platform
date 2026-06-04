@@ -9,6 +9,7 @@ from slowapi.errors import RateLimitExceeded
 # from core.middleware import CorrelationMiddleware, RequestLoggingMiddleware
 from core import CorrelationMiddleware, RequestLoggingMiddleware
 from core.config import settings
+from core.dependencies import register_exception_handlers
 from modules.auth.router import router as auth_router
 from modules.farm.router import router as farm_router
 from modules.inventory.router import router as inventory_router
@@ -49,6 +50,7 @@ limiter = Limiter(
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+register_exception_handlers(app)
 
 for r in [
     auth_router,

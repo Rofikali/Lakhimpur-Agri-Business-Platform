@@ -2,7 +2,7 @@ import json
 import logging
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.dependencies import get_db_session, require_owner
@@ -61,13 +61,7 @@ async def razorpay_webhook(
         rzp_client.verify_webhook_signature(body, sig)
     except WebhookSignatureInvalidError:
         logger.warning("Webhook HMAC failed — possible spoofing attempt")
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error": "WEBHOOK_SIGNATURE_INVALID",
-                "message": "Invalid webhook signature",
-            },
-        )
+        raise
 
     payload = json.loads(body)
     event = payload.get("event", "")
@@ -99,13 +93,8 @@ async def razorpay_webhook(
         return {"status": "ok", "note": "order_not_found"}
 
     # ── Step 4: Confirm order + decrement stock (atomic) ───────────────────
-    bg.add_task(
-        order_svc.confirm_from_webhook,
-        order.id,
-        rzp_payment_id,
-        sig,
-        bg,
-    )
+    # The state change is critical and must complete before acknowledging Razorpay.
+    await order_svc.confirm_from_webhook(order.id, rzp_payment_id, sig, bg)
 
     return {"status": "ok"}
 
