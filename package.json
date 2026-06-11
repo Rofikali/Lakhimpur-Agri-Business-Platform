@@ -1,5 +1,12 @@
 {
-  "dependencies": {
-    "pnpm": "^11.3.0"
+  "name": "lakhimpur-biz",
+  "private": true,
+  "packageManager": "pnpm@11.3.0",
+  "scripts": {
+    "fe:dev": "pnpm --dir frontend run dev --no-fork --host 0.0.0.0 --port 3000",
+    "fe:lint": "pnpm --dir frontend run lint",
+    "fe:typecheck": "pnpm --dir frontend run typecheck",
+    "fe:build": "pnpm --dir frontend run build",
+    "fe:check": "pnpm --dir frontend run lint && pnpm --dir frontend run typecheck && pnpm --dir frontend run build"
   }
 }
