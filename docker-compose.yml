@@ -65,7 +65,7 @@ services:
       - frontend_nuxt:/app/.nuxt
     env_file:
       - ./frontend/.env.local
-    command: npm run dev
+    command: pnpm dev
     depends_on:
       - backend
     restart: unless-stopped
